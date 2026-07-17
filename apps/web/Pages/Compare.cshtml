@@ -1,0 +1,28 @@
+@page "/compare"
+@model Proj37.CostEstimator.Web.Pages.CompareModel
+@{
+    ViewData["Title"] = "Compare (Build vs Buy)";
+    ViewData["ActivePage"] = "compare";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Compare — Build vs Buy</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-secondary" data-agent-step="compare">ℹ Agent instructions</button>
+            <button type="button" class="btn btn-primary" id="runCompareBtn" hidden>⚖️ Run comparison</button>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent, then return here to compare the <strong>build</strong> cost against the off-the-shelf <strong>buy</strong> cost from the document.</p>
+</section>
+
+<section class="card" id="compareCard" hidden>
+    <p class="hint">Compares the agentic Azure <strong>build</strong> cost (one-time delivery + Azure infrastructure + run/support) against the <strong>buy</strong> baseline parsed from the source document's off-the-shelf cost section. A Build-vs-Buy Analyst agent reasons over the numbers and recommends an option.</p>
+    <div id="compareBody"><p class="muted">Click <strong>Run comparison</strong> to analyse build vs buy.</p></div>
+</section>

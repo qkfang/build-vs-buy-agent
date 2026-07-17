@@ -1,0 +1,77 @@
+name: 10 Infra Deploy
+
+# Provisions the Azure infrastructure for the proj37 Foundry cost-estimator POC:
+# App Service (Linux, .NET 10), Microsoft Foundry (AI Services account + project + model deployment),
+# Storage, Key Vault, Log Analytics / App Insights, and the managed-identity RBAC assignments.
+#
+# Manual trigger (matches the rest of this repo). Requires the AZURE_CREDENTIALS secret
+# (a service principal with Contributor + User Access Administrator on the resource group).
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseName:
+        description: "Base name used in resource naming"
+        required: true
+        default: "bvb"
+      location:
+        description: "Azure region"
+        required: true
+        default: "australiaeast"
+      foundryEnabled:
+        description: "Provision + enable the live Foundry agent path (true/false)"
+        required: true
+        default: "true"
+
+permissions:
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-bvb
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate Bicep (what-if)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az deployment group what-if \
+              --resource-group "$RESOURCE_GROUP" \
+              --template-file bicep/main.bicep \
+              --parameters bicep/main.bicepparam \
+              --parameters baseName='${{ inputs.baseName }}' location='${{ inputs.location }}' foundryEnabled=${{ inputs.foundryEnabled }} \
+              || echo "what-if returned non-zero (often informational); continuing to deploy."
+
+      - name: Deploy Bicep
+        id: deploy
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az deployment group create \
+              --name 'proj37-${{ github.run_number }}' \
+              --resource-group "$RESOURCE_GROUP" \
+              --template-file bicep/main.bicep \
+              --parameters bicep/main.bicepparam \
+              --parameters baseName='${{ inputs.baseName }}' location='${{ inputs.location }}' foundryEnabled=${{ inputs.foundryEnabled }} \
+              --query "properties.outputs" -o json | tee outputs.json
+
+      - name: Show outputs
+        run: |
+          echo "Deployment outputs:"
+          cat outputs.json
+          echo ""
+          echo "Web App URL: $(jq -r '.webAppUrl.value' outputs.json)"
+          echo "Foundry endpoint: $(jq -r '.foundryProjectEndpoint.value' outputs.json)"
+          echo "Next: run proj37_foundry_cost_estimator_deploy to publish the app."

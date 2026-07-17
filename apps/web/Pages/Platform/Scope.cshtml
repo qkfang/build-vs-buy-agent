@@ -1,0 +1,26 @@
+@page "/platform/scope"
+@model Proj37.CostEstimator.Web.Pages.Platform.ScopeModel
+@{
+    ViewData["Title"] = "Scope";
+    ViewData["ActivePage"] = "scope";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Scope</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-secondary" data-agent-step="scope">ℹ Agent instructions</button>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="scopeCard" hidden>
+    <div id="tab-scope"></div>
+</section>

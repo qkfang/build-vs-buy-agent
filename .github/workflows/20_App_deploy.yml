@@ -1,0 +1,92 @@
+name: 20 App Deploy
+
+# Builds, publishes, and zip-deploys the proj37 .NET web app to its Azure App Service.
+# Run proj37_foundry_cost_estimator_infra first so the Web App exists.
+#
+# Manual trigger. Requires the AZURE_CREDENTIALS secret.
+
+on:
+  workflow_dispatch:
+    inputs:
+      baseName:
+        description: "Base name used in resource naming (must match infra)"
+        required: true
+        default: "bvb"
+
+permissions:
+  contents: read
+
+env:
+  RESOURCE_GROUP: rg-bvb
+  DOTNET_VERSION: "10.0.x"
+  APP_PROJECT: apps/web/Proj37.CostEstimator.Web.csproj
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: "preview"
+
+      - name: Restore
+        run: dotnet restore "$APP_PROJECT"
+
+      - name: Publish
+        run: dotnet publish "$APP_PROJECT" -c Release -o "${{ github.workspace }}/publish" --no-restore
+
+      - name: Zip publish output
+        working-directory: ${{ github.workspace }}/publish
+        run: zip -r "${{ github.workspace }}/app.zip" .
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Resolve Web App name
+        id: web
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            WEBAPP=$(az webapp list -g "$RESOURCE_GROUP" \
+              --query "[?starts_with(name,'${{ inputs.baseName }}-web-')].name | [0]" -o tsv)
+            if [ -z "$WEBAPP" ]; then
+              echo "No Web App found for baseName=${{ inputs.baseName }} in $RESOURCE_GROUP."
+              echo "Run proj37_foundry_cost_estimator_infra first."; exit 1
+            fi
+            echo "webApp=$WEBAPP" >> "$GITHUB_OUTPUT"
+            echo "Resolved Web App: $WEBAPP"
+
+      - name: Deploy ZIP to App Service
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            az webapp deploy \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "${{ steps.web.outputs.webApp }}" \
+              --src-path "${{ github.workspace }}/app.zip" \
+              --type zip
+
+      - name: Smoke test (health endpoint)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -euo pipefail
+            HOST=$(az webapp show -g "$RESOURCE_GROUP" --name "${{ steps.web.outputs.webApp }}" --query defaultHostName -o tsv)
+            echo "Waiting for app to warm up at https://$HOST ..."
+            for i in $(seq 1 20); do
+              CODE=$(curl -s -o /tmp/health.json -w "%{http_code}" "https://$HOST/api/health" || true)
+              if [ "$CODE" = "200" ]; then
+                echo "Health OK:"; cat /tmp/health.json; echo ""; exit 0
+              fi
+              echo "Attempt $i: HTTP $CODE; retrying in 10s..."; sleep 10
+            done
+            echo "Health check did not return 200 in time."; exit 1

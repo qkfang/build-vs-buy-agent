@@ -1,0 +1,18 @@
+@page
+@model Proj37.CostEstimator.Web.Pages.ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Error</title></head>
+<body style="font-family:system-ui;margin:3rem;">
+    <h1>Something went wrong</h1>
+    <p>An unexpected error occurred while processing your request.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p><strong>Request ID:</strong> <code>@Model.RequestId</code></p>
+    }
+    <p><a href="/">Back to home</a></p>
+</body>
+</html>

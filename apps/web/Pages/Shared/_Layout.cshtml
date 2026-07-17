@@ -1,0 +1,71 @@
+@{
+    var page = (ViewData["ActivePage"] as string) ?? "";
+    string Active(string key) => page == key ? "active" : "";
+    bool platformActive = page is "scope" or "requirements" or "cost" or "project" or "operations" or "steps";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — Build vs Buy Agent</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body data-page="@(page)">
+<header class="topbar">
+    <div class="brand">
+        <a class="brand-link" href="/">
+            <span class="logo">⛅</span>
+            <div>
+                <h1>Build vs Buy Agent</h1>
+                <p class="tagline">Foundry agents · documents → scope → requirements → cost → Excel</p>
+            </div>
+        </a>
+    </div>
+</header>
+
+<nav class="mainnav" aria-label="Primary">
+    <div class="nav-inner">
+        <a class="navlink nav-module @Active("upload")" href="/">
+            <span class="nav-module-icon">📤</span> Upload
+        </a>
+        <div class="nav-group nav-module @(platformActive ? "active" : "")">
+            <span class="nav-module-label"><span class="nav-module-icon">🤖</span> Build</span>
+            <div class="nav-sub">
+                <a class="navlink sub @Active("scope")" href="/platform/scope">Scope</a>
+                <a class="navlink sub @Active("requirements")" href="/platform/requirements">Requirements</a>
+                <a class="navlink sub @Active("cost")" href="/platform/cost">Cost Model</a>
+                <a class="navlink sub @Active("project")" href="/platform/project">Project Cost</a>
+                <a class="navlink sub @Active("operations")" href="/platform/operations">Operation Cost</a>
+                <a class="navlink sub @Active("steps")" href="/platform/steps">Prompts</a>
+            </div>
+        </div>
+        <a class="navlink nav-module @Active("compare")" href="/compare">
+            <span class="nav-module-icon">⚖️</span> Compare
+        </a>
+        <a class="navlink nav-module @Active("estimations")" href="/estimations">
+            <span class="nav-module-icon">📊</span> Histories
+        </a>
+    </div>
+</nav>
+
+<main>
+    @RenderBody()
+</main>
+
+<!-- Shared modal host (sample viewer + agent-instruction popups) -->
+<div id="modalRoot" class="modal-root" hidden>
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-head">
+            <h3 id="modalTitle">Title</h3>
+            <button type="button" class="modal-close" data-close="1" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<script src="~/js/app.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,35 @@
+@page "/platform/cost"
+@model Proj37.CostEstimator.Web.Pages.Platform.CostModel
+@{
+    ViewData["Title"] = "Cost Model";
+    ViewData["ActivePage"] = "cost";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Cost Model</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-secondary" data-agent-step="cost">ℹ Agent instructions</button>
+            <a id="downloadBtn" class="btn btn-download" href="#" hidden>⬇ Download Excel</a>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="costCard" hidden>
+    <div class="env-toggle" id="envToggle" role="tablist" aria-label="Cost environment view">
+        <button type="button" class="env-btn" data-env="nonprod" role="tab">Non-Prod</button>
+        <button type="button" class="env-btn" data-env="prod" role="tab">Prod</button>
+        <button type="button" class="env-btn active" data-env="total" role="tab" aria-selected="true">Total</button>
+    </div>
+    <p class="hint env-note" id="envNote"></p>
+    <div class="totals" id="totals"></div>
+    <p class="hint">The <strong>Qty</strong> column is editable — change a value to recalculate the monthly total live. Each line links to its <strong>Azure pricing reference</strong>. The downloaded Excel workbook keeps quantities editable and includes separate <strong>Non-Prod</strong>, <strong>Prod</strong>, and <strong>Total</strong> sheets.</p>
+    <div id="tab-cost"></div>
+</section>

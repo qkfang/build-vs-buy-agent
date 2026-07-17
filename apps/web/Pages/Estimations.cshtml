@@ -1,0 +1,12 @@
+@page "/estimations"
+@model Proj37.CostEstimator.Web.Pages.EstimationsModel
+@{
+    ViewData["Title"] = "Recent Estimations";
+    ViewData["ActivePage"] = "estimations";
+}
+
+<section class="card history-card">
+    <h2>Recent estimations</h2>
+    <p class="hint">Select a row to load it into Build vs Buy Agent, or download its Excel workbook.</p>
+    <div id="history" class="history">Loading…</div>
+</section>

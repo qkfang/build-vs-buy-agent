@@ -1,0 +1,29 @@
+@page "/platform/steps"
+@model Proj37.CostEstimator.Web.Pages.Platform.StepsModel
+@{
+    ViewData["Title"] = "Agent Steps";
+    ViewData["ActivePage"] = "steps";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Agent Steps</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="stepsIntro">
+    <p class="hint">Each estimation runs as individual agent-backed steps — Scope, Requirements, Cost Model, Project Cost, and Operation Cost. Open any step's instructions to see exactly how that agent is prompted.</p>
+    <div class="step-cards" id="stepCards"></div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="stepsCard" hidden>
+    <h2>Run transcript</h2>
+    <div id="tab-steps"></div>
+</section>

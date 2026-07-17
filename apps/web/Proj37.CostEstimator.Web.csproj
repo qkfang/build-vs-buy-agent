@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Proj37.CostEstimator.Web</RootNamespace>
+    <AssemblyName>Proj37.CostEstimator.Web</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UserSecretsId>proj37-cost-estimator-poc</UserSecretsId>
+    <!-- Microsoft.Agents.AI surfaces some experimental APIs (MEAI001 etc.); suppress to keep build clean -->
+    <NoWarn>$(NoWarn);MEAI001;OPENAI001;AOAI001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Microsoft Foundry / Microsoft Agent Framework (hosted, in-process agent pattern).
+         AsAIAgent(...) on AIProjectClient creates an ephemeral Responses-API agent. -->
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Microsoft.Agents.AI.Foundry" Version="1.5.0" />
+    <PackageReference Include="Microsoft.Agents.AI" Version="1.5.0" />
+
+    <!-- Excel generation (cross-platform, no native deps) -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+
+    <!-- Markdown rendering: sample requirement docs are markdown; we render them to safe HTML
+         server-side for the Upload-page "View" popup (CommonMark + pipe tables + autolinks). -->
+    <PackageReference Include="Markdig" Version="1.3.2" />
+
+    <!-- DOCX ingestion -->
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+
+    <!-- Telemetry -->
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+
+    <!-- OpenAPI document generation (Foundry OpenAPI tool pattern) -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ship the bundled sample SOW with the published artifact. The Web SDK auto-copies
+         wwwroot but NOT a top-level Data/ folder, so without this the "Run sample brief"
+         endpoint (Program.cs reads ContentRootPath/Data/sample-statement-of-work.md) 404s
+         on a published / RunFromPackage deploy even though it works under `dotnet run`. -->
+    <Content Include="Data\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

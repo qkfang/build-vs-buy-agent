@@ -1,0 +1,26 @@
+@page "/platform/requirements"
+@model Proj37.CostEstimator.Web.Pages.Platform.RequirementsModel
+@{
+    ViewData["Title"] = "Requirements";
+    ViewData["ActivePage"] = "requirements";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Requirements</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-secondary" data-agent-step="requirements">ℹ Agent instructions</button>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="reqCard" hidden>
+    <div id="tab-requirements"></div>
+</section>

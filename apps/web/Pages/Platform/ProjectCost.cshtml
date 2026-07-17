@@ -1,0 +1,29 @@
+@page "/platform/project"
+@model Proj37.CostEstimator.Web.Pages.Platform.ProjectCostModel
+@{
+    ViewData["Title"] = "Project Cost";
+    ViewData["ActivePage"] = "project";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Project Cost</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-secondary" data-agent-step="project">ℹ Agent instructions</button>
+            <a id="downloadBtn" class="btn btn-download" href="#" hidden>⬇ Download Excel</a>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="projectCard" hidden>
+    <p class="hint">One-time cost to design and build the solution. The <strong>Day Rate</strong> and <strong>Estimated Days</strong> columns are editable — change a value to recalculate the build total live. The downloaded Excel workbook keeps these editable on a <strong>Project Cost</strong> sheet.</p>
+    <div class="totals" id="projectTotals"></div>
+    <div id="tab-project"></div>
+</section>
