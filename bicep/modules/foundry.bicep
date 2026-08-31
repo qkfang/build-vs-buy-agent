@@ -8,16 +8,16 @@ param foundryServicesName string
 param foundryProjectName string
 
 @description('Model deployment name used by the cost-estimator prompt agent')
-param modelDeploymentName string = 'gpt-4o'
+param modelDeploymentName string = 'gpt-4o-mini'
 
 @description('Model name to deploy')
-param modelName string = 'gpt-4o'
+param modelName string = 'gpt-4o-mini'
 
 @description('Model version to deploy')
-param modelVersion string = '2024-11-20'
+param modelVersion string = '2024-07-18'
 
 @description('Model deployment capacity (thousands of tokens per minute)')
-param modelCapacity int = 50
+param modelCapacity int = 10
 
 // Azure AI Services account with Foundry project management enabled.
 resource foundrySvc 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {

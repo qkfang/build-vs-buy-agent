@@ -13,9 +13,9 @@ param appServiceSku = 'P0v3'
 // using its deterministic offline estimation engine (handy if model quota is constrained).
 param foundryEnabled = true
 
-// Model deployment for the prompt agent. gpt-4o is broadly available; adjust to your quota/region.
-param modelDeploymentName = 'gpt-4o'
-param modelName = 'gpt-4o'
-param modelVersion = '2024-11-20'
+// Model deployment for the prompt agent. Use a smaller model when gpt-4o quota is exhausted.
+param modelDeploymentName = 'gpt-4o-mini'
+param modelName = 'gpt-4o-mini'
+param modelVersion = '2024-07-18'
 
 param containerName = 'estimations'
