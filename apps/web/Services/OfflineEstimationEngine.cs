@@ -19,27 +19,76 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
 
     public Task<EstimationResult> EstimateAsync(EstimationResult job, CancellationToken ct = default)
     {
-        var corpus = string.Join("\n\n", job.Documents.Select(d => $"# {d.FileName}\n{d.ExtractedText}"));
-        var signals = WorkloadSignals.FromText(corpus);
-
         job.Engine = Name;
-        job.Scope = BuildScope(job, signals, corpus);
+        job.Scope = EstimateScope(job.Documents);
         job.AgentSteps.Add(new AgentStepLog { Step = "scope", Summary = $"Derived scope from {job.Documents.Count} document(s); workload profile: {job.Scope.WorkloadProfile}." });
 
-        job.Requirements = BuildRequirements(signals);
+        job.Requirements = EstimateRequirements(job.Documents);
         job.AgentSteps.Add(new AgentStepLog { Step = "requirements", Summary = $"Synthesized {job.Requirements.Count} technical requirements across {job.Requirements.Select(r => r.Category).Distinct().Count()} categories." });
 
-        job.Cost = BuildCost(signals);
+        job.Cost = EstimateCost(job.Documents);
         job.AgentSteps.Add(new AgentStepLog { Step = "cost", Summary = $"Estimated {job.Cost.LineItems.Count} Azure line items. Monthly (incl. {job.Cost.ContingencyPercent}% contingency): {job.Cost.Currency} {job.Cost.MonthlyTotalWithContingency:N2}." });
 
-        job.ProjectCost = BuildProjectCost(signals);
+        job.ProjectCost = EstimateProjectCost(job.Documents);
         job.AgentSteps.Add(new AgentStepLog { Step = "project", Summary = $"Planned a {job.ProjectCost.Roles.Count}-role delivery team (~{job.ProjectCost.TotalDays:N0} person-days). Build cost (incl. {job.ProjectCost.ContingencyPercent}% contingency): {job.ProjectCost.Currency} {job.ProjectCost.TotalWithContingency:N2}." });
 
-        job.Operations = BuildOperations(signals);
+        job.Operations = EstimateOperations(job.Documents);
         job.AgentSteps.Add(new AgentStepLog { Step = "operations", Summary = $"Estimated {job.Operations.Items.Count} ongoing operating line items. Monthly run cost (incl. {job.Operations.ContingencyPercent}% contingency): {job.Operations.Currency} {job.Operations.MonthlyTotalWithContingency:N2}." });
 
         job.Status = "completed";
         return Task.FromResult(job);
+    }
+
+    /// <summary>
+    /// Deterministically derives the scope step from the persisted documents only.
+    /// </summary>
+    public ScopeSummary EstimateScope(IReadOnlyCollection<IngestedDocument> documents)
+    {
+        var job = new EstimationResult();
+        job.Documents.AddRange(documents);
+        var corpus = BuildCorpus(documents);
+        var signals = Analyze(corpus);
+        return BuildScope(job, signals, corpus);
+    }
+
+    /// <summary>
+    /// Deterministically derives the requirements step from the persisted documents only.
+    /// </summary>
+    public List<TechnicalRequirement> EstimateRequirements(IReadOnlyCollection<IngestedDocument> documents)
+    {
+        var corpus = BuildCorpus(documents);
+        var signals = Analyze(corpus);
+        return BuildRequirements(signals);
+    }
+
+    /// <summary>
+    /// Deterministically derives the Azure cost model from the persisted documents only.
+    /// </summary>
+    public CostEstimate EstimateCost(IReadOnlyCollection<IngestedDocument> documents)
+    {
+        var corpus = BuildCorpus(documents);
+        var signals = Analyze(corpus);
+        return BuildCost(signals);
+    }
+
+    /// <summary>
+    /// Deterministically derives the one-time project build cost from the persisted documents only.
+    /// </summary>
+    public ProjectBuildCost EstimateProjectCost(IReadOnlyCollection<IngestedDocument> documents)
+    {
+        var corpus = BuildCorpus(documents);
+        var signals = Analyze(corpus);
+        return BuildProjectCost(signals);
+    }
+
+    /// <summary>
+    /// Deterministically derives the ongoing operation cost from the persisted documents only.
+    /// </summary>
+    public OperationCost EstimateOperations(IReadOnlyCollection<IngestedDocument> documents)
+    {
+        var corpus = BuildCorpus(documents);
+        var signals = Analyze(corpus);
+        return BuildOperations(signals);
     }
 
     // ---------------------------------------------------------------- Scope
@@ -400,6 +449,11 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
     }
 
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max];
+
+    private static string BuildCorpus(IEnumerable<IngestedDocument> documents) =>
+        string.Join("\n\n", documents.Select(d => $"# {d.FileName}\n{d.ExtractedText}"));
+
+    private static WorkloadSignals Analyze(string corpus) => WorkloadSignals.FromText(corpus);
 
     [GeneratedRegex(@"(?im)^\s*project\s*[:\-]\s*(.+)$")]
     private static partial Regex ProjectLineRegex();

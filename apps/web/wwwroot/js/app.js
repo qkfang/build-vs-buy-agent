@@ -9,10 +9,15 @@ const fmtMoney = (n, ccy) => {
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---------------------------------------------------------------- store
-const STORE_KEY = 'proj37.currentJob';
+const JOB_STORE_KEY = 'proj37.currentJob';
+const SESSION_STORE_KEY = 'proj37.currentSession';
 const Store = {
-  get() { try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch { return null; } },
-  set(job) { try { localStorage.setItem(STORE_KEY, JSON.stringify(job)); } catch { /* ignore quota */ } },
+  getJob() { try { return JSON.parse(localStorage.getItem(JOB_STORE_KEY) || 'null'); } catch { return null; } },
+  setJob(job) { try { localStorage.setItem(JOB_STORE_KEY, JSON.stringify(job)); } catch { /* ignore quota */ } },
+  clearJob() { try { localStorage.removeItem(JOB_STORE_KEY); } catch { /* ignore */ } },
+  getSession() { try { return JSON.parse(localStorage.getItem(SESSION_STORE_KEY) || 'null'); } catch { return null; } },
+  setSession(session) { try { localStorage.setItem(SESSION_STORE_KEY, JSON.stringify(session)); } catch { /* ignore quota */ } },
+  clearSession() { try { localStorage.removeItem(SESSION_STORE_KEY); } catch { /* ignore */ } },
 };
 
 let AGENT_INSTRUCTIONS = null;
@@ -39,9 +44,9 @@ let selectedFiles = [];
 function initUpload() {
   wireUpload();
   loadSamples();
-  // If a job already exists, surface the "ready" shortcut.
-  const job = Store.get();
-  if (job && job.scope) showDone(job);
+  loadPreviousSessions();
+  const session = Store.getSession();
+  if (session && session.sessionId) showSessionReady(session);
 }
 
 function wireUpload() {
@@ -57,8 +62,29 @@ function wireUpload() {
     if (selectedFiles.length === 0) { setStatus('Please choose at least one document, or run an example brief below.', 'error'); return; }
     const fd = new FormData();
     selectedFiles.forEach(f => fd.append('files', f));
-    await runEstimation(() => fetch('/api/estimations', { method: 'POST', body: fd }));
+    await createSession(() => fetch('/api/sessions', { method: 'POST', body: fd }));
   });
+
+  const sessionSelect = $('#previousSessionSelect');
+  if (sessionSelect) {
+    sessionSelect.addEventListener('change', () => {
+      const loadBtn = $('#loadSessionBtn');
+      if (loadBtn) loadBtn.disabled = !sessionSelect.value;
+    });
+  }
+
+  const loadBtn = $('#loadSessionBtn');
+  if (loadBtn) {
+    loadBtn.addEventListener('click', async () => {
+      const sessionId = sessionSelect?.value;
+      if (!sessionId) { setStatus('Choose a previous session to load.', 'error'); return; }
+      const session = await fetchSession(sessionId);
+      if (!session) { setStatus('Could not load that session.', 'error'); return; }
+      Store.setSession(session);
+      Store.clearJob();
+      window.location.href = '/platform/scope';
+    });
+  }
 }
 
 function renderFileList() {
@@ -84,11 +110,11 @@ async function loadSamples() {
         </div>
         <div class="sample-actions">
           <button type="button" class="btn btn-secondary btn-sm" data-view-sample="${esc(s.id)}" data-title="${esc(s.title)}">View</button>
-          <button type="button" class="btn btn-primary btn-sm" data-use-sample="${esc(s.id)}">Use this</button>
+          <button type="button" class="btn btn-primary btn-sm" data-use-sample="${esc(s.id)}" data-file-name="${esc(s.fileName)}">Use this</button>
         </div>
       </div>`).join('');
     $all('[data-view-sample]', el).forEach(b => b.addEventListener('click', () => viewSample(b.dataset.viewSample, b.dataset.title)));
-    $all('[data-use-sample]', el).forEach(b => b.addEventListener('click', () => useSample(b.dataset.useSample)));
+    $all('[data-use-sample]', el).forEach(b => b.addEventListener('click', () => useSample(b.dataset.useSample, b.dataset.fileName)));
   } catch {
     el.innerHTML = '<p class="muted">Could not load example documents.</p>';
   }
@@ -114,23 +140,32 @@ async function viewSample(id, title) {
   }
 }
 
-async function useSample(id) {
-  await runEstimation(() => fetch('/api/estimations/sample?id=' + encodeURIComponent(id), { method: 'POST' }));
+async function useSample(id, fileName) {
+  await createSession(async () => {
+    const raw = await fetch('/api/samples/' + encodeURIComponent(id));
+    if (!raw.ok) throw new Error('Could not load sample document.');
+    const text = await raw.text();
+    const fd = new FormData();
+    fd.append('files', new Blob([text], { type: 'text/markdown' }), fileName || (id + '.md'));
+    return fetch('/api/sessions', { method: 'POST', body: fd });
+  });
 }
 
-async function runEstimation(call) {
+async function createSession(call) {
   setBusy(true);
-  setStatus('Ingesting documents and running the estimation pipeline…', 'busy');
+  setStatus('Ingesting documents and creating a session…', 'busy');
   try {
     const r = await call();
-    const job = await r.json();
-    if (!r.ok && job.status !== 'completed') {
-      setStatus('Estimation failed: ' + (job.error || r.statusText), 'error');
+    const session = await r.json();
+    if (!r.ok) {
+      setStatus('Session creation failed: ' + (session.error || r.statusText), 'error');
       return;
     }
-    setStatus('Estimation complete.', 'info');
-    Store.set(job);
-    showDone(job);
+    setStatus('Session created. Open Scope and click Run agent to start the pipeline.', 'info');
+    Store.setSession(session);
+    Store.clearJob();
+    showSessionReady(session);
+    await loadPreviousSessions();
   } catch (err) {
     setStatus('Request error: ' + err.message, 'error');
   } finally {
@@ -138,37 +173,70 @@ async function runEstimation(call) {
   }
 }
 
-function showDone(job) {
+async function loadPreviousSessions() {
+  const sel = $('#previousSessionSelect');
+  if (!sel) return;
+  try {
+    const r = await fetch('/api/sessions');
+    const items = await r.json();
+    if (!items.length) {
+     sel.innerHTML = '<option value="">No previous sessions</option>';
+     sel.disabled = true;
+     const loadBtn = $('#loadSessionBtn'); if (loadBtn) loadBtn.disabled = true;
+     return;
+    }
+    const current = Store.getSession()?.sessionId || '';
+    sel.innerHTML = '<option value="">Select a previous session…</option>' + items.map(s =>
+     `<option value="${esc(s.sessionId)}"${s.sessionId === current ? ' selected' : ''}>${esc(s.project || s.sessionId)} · ${esc(s.status)} · ${new Date(s.createdUtc).toLocaleString()}</option>`).join('');
+    sel.disabled = false;
+    const loadBtn = $('#loadSessionBtn'); if (loadBtn) loadBtn.disabled = !current;
+  } catch {
+    sel.innerHTML = '<option value="">Could not load sessions</option>';
+    sel.disabled = true;
+    const loadBtn = $('#loadSessionBtn'); if (loadBtn) loadBtn.disabled = true;
+  }
+}
+
+function showSessionReady(session) {
   const card = $('#doneCard');
   if (!card) return;
   card.hidden = false;
-  const c = job.cost || {};
   $('#doneSummary').textContent =
-    `${job.scope?.projectName || 'Estimation'} · ${job.requirements?.length || 0} requirements · `
-    + `${fmtMoney(c.monthlyTotalWithContingency, c.currency)}/mo (incl. ${c.contingencyPercent || 0}% contingency).`;
-  const dl = $('#doneDownload');
-  dl.href = `/api/estimations/${job.jobId}/workbook`;
-  dl.setAttribute('download', '');
+    `${session.documents?.length || 0} document(s) ingested into ${session.sessionId}. No agent step has run yet — open Scope and click Run agent.`;
   card.scrollIntoView({ behavior: 'smooth' });
 }
 
 function setStatus(msg, kind) { const s = $('#status'); if (!s) return; s.hidden = false; s.textContent = msg; s.className = 'status ' + kind; }
-function setBusy(b) { const e = $('#estimateBtn'); if (e) e.disabled = b; $all('[data-use-sample]').forEach(x => x.disabled = b); }
-
-// ================================================================ PLATFORM pages
-function platformContext(job) {
-  const line = $('#ctxLine');
-  if (!line) return;
-  if (!job || !job.scope) { line.textContent = 'No estimation loaded yet.'; return; }
-  const c = job.cost || {};
-  line.innerHTML = `<strong>${esc(job.scope.projectName || 'Estimation')}</strong> · `
-    + `${fmtMoney(c.monthlyTotalWithContingency, c.currency)}/mo · <span class="muted">job ${esc(job.jobId)}</span>`;
+function setBusy(b) {
+  const e = $('#estimateBtn');
+  if (e) e.disabled = b;
+  const loadBtn = $('#loadSessionBtn');
+  const sel = $('#previousSessionSelect');
+  if (loadBtn) loadBtn.disabled = b || !sel || !sel.value;
+  $all('[data-use-sample]').forEach(x => x.disabled = b);
 }
 
-function showOrEmpty(job, cardSel) {
+// ================================================================ PLATFORM pages
+function platformContext(mode, data) {
+  const line = $('#ctxLine');
+  if (!line) return;
+  if (!data) { line.textContent = 'No estimation or session loaded yet.'; return; }
+  if (mode === 'session') {
+    const cost = data.cost || {};
+    const total = data.cost ? `${fmtMoney(cost.monthlyTotalWithContingency, cost.currency)}/mo · ` : '';
+    line.innerHTML = `<strong>${esc(data.scope?.projectName || 'New session')}</strong> · ${total}<span class="muted">${esc(data.sessionId)}</span>`;
+    return;
+  }
+  if (!data.scope) { line.textContent = 'No estimation loaded yet.'; return; }
+  const c = data.cost || {};
+  line.innerHTML = `<strong>${esc(data.scope.projectName || 'Estimation')}</strong> · `
+    + `${fmtMoney(c.monthlyTotalWithContingency, c.currency)}/mo · <span class="muted">job ${esc(data.jobId)}</span>`;
+}
+
+function showOrEmpty(data, cardSel) {
   const empty = $('#emptyState');
   const card = $(cardSel);
-  if (!job || !job.scope) { if (empty) empty.hidden = false; if (card) card.hidden = true; return false; }
+  if (!data) { if (empty) empty.hidden = false; if (card) card.hidden = true; return false; }
   if (empty) empty.hidden = true;
   if (card) card.hidden = false;
   return true;
@@ -183,41 +251,162 @@ async function ensureJobDetail(job, hasData) {
     const r = await fetch('/api/estimations/' + encodeURIComponent(job.jobId));
     if (r.ok) {
       const fresh = await r.json();
-      if (fresh && fresh.jobId) { Store.set(fresh); return fresh; }
+      if (fresh && fresh.jobId) { Store.setJob(fresh); return fresh; }
     }
   } catch { /* keep the local copy on any error */ }
   return job;
 }
 
-function initScope() {
-  const job = Store.get();
-  platformContext(job);
-  if (!showOrEmpty(job, '#scopeCard')) return;
-  renderScope(job.scope || {});
+async function fetchSession(sessionId) {
+  if (!sessionId) return null;
+  try {
+    const r = await fetch('/api/sessions/' + encodeURIComponent(sessionId));
+    if (!r.ok) return null;
+    const session = await r.json();
+    if (session?.sessionId) Store.setSession(session);
+    return session;
+  } catch { return null; }
 }
 
-function initRequirements() {
-  const job = Store.get();
-  platformContext(job);
-  if (!showOrEmpty(job, '#reqCard')) return;
-  renderRequirements(job.requirements || []);
+async function loadPlatformState(hasJobData) {
+  const sessionRef = Store.getSession();
+  if (sessionRef?.sessionId) {
+    const session = await fetchSession(sessionRef.sessionId) || sessionRef;
+    return { mode: 'session', data: session };
+  }
+  let job = Store.getJob();
+  if (job) {
+    job = await ensureJobDetail(job, hasJobData || (() => true));
+    if (job?.jobId) Store.setJob(job);
+    return { mode: 'job', data: job };
+  }
+  return { mode: null, data: null };
 }
 
-function initCost() {
-  const job = Store.get();
-  platformContext(job);
-  if (!showOrEmpty(job, '#costCard')) return;
+function stepState(session, step) {
+  return session?.steps?.[step] || { status: 'pending', lastRunUtc: null, error: null };
+}
+
+function renderSessionStepMeta(session, step) {
+  const state = stepState(session, step);
+  const status = $('#stepStatus');
+  const error = $('#stepError');
+  if (status) {
+    const lastRun = state.lastRunUtc ? new Date(state.lastRunUtc).toLocaleString() : 'Never';
+    status.innerHTML = `<strong>Status:</strong> ${esc(state.status)} · <span class="muted">Last run: ${esc(lastRun)}</span>`;
+  }
+  if (error) {
+    if (state.error) {
+      error.hidden = false;
+      error.textContent = state.error;
+    } else {
+      error.hidden = true;
+      error.textContent = '';
+    }
+  }
+}
+
+function wireRunButton(selector, mode, handler) {
+  const btn = $(selector);
+  if (!btn) return;
+  if (mode !== 'session') { btn.hidden = true; return; }
+  btn.hidden = false;
+  if (btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', handler);
+}
+
+async function postSessionStep(step, buttonSelector, runningLabel) {
+  const session = Store.getSession();
+  if (!session?.sessionId) throw new Error('No session loaded.');
+  const btn = $(buttonSelector);
+  const original = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = runningLabel; }
+  try {
+    const r = await fetch(`/api/sessions/${encodeURIComponent(session.sessionId)}/steps/${encodeURIComponent(step)}`, { method: 'POST' });
+    const payload = await r.json();
+    if (!r.ok) throw new Error(payload.error || r.statusText);
+    Store.setSession(payload);
+    return payload;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+async function initScope() {
+  const { mode, data } = await loadPlatformState(j => !!j.scope);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#scopeCard')) return;
+  wireRunButton('#runScopeBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('scope', '#runScopeBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'scope');
+      renderScopeOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'scope');
+    renderScopeOrPending(data);
+    return;
+  }
+  renderScope(data.scope || {});
+}
+
+async function initRequirements() {
+  const { mode, data } = await loadPlatformState(j => Array.isArray(j.requirements) && j.requirements.length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#reqCard')) return;
+  wireRunButton('#runRequirementsBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('requirements', '#runRequirementsBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'requirements');
+      renderRequirementsOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'requirements');
+    renderRequirementsOrPending(data);
+    return;
+  }
+  renderRequirements(data.requirements || []);
+}
+
+async function initCost() {
+  const { mode, data } = await loadPlatformState(j => ((j.cost && j.cost.lineItems) || []).length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#costCard')) return;
+  wireRunButton('#runCostBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('cost', '#runCostBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'cost');
+      renderCostOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'cost');
+    renderCostOrPending(data);
+    return;
+  }
   const dl = $('#downloadBtn');
-  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${job.jobId}/workbook`; dl.setAttribute('download', ''); }
-  renderCost(job.cost || {});
+  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${data.jobId}/workbook`; dl.setAttribute('download', ''); }
+  renderCost(data.cost || {});
 }
 
-function initSteps() {
-  const job = Store.get();
-  platformContext(job);
+async function initSteps() {
+  const { mode, data } = await loadPlatformState(() => true);
+  platformContext(mode, data);
   renderStepCards();
-  if (!showOrEmpty(job, '#stepsCard')) return;
-  renderSteps(job.agentSteps || []);
+  if (!showOrEmpty(data, '#stepsCard')) return;
+  renderSteps(data.agentSteps || [], data.steps || null);
 }
 
 // ================================================================ PROJECT (build) cost page
@@ -225,16 +414,27 @@ function initSteps() {
 let PROJECT_STATE = null;
 
 async function initProjectCost() {
-  let job = Store.get();
-  platformContext(job);
-  if (!showOrEmpty(job, '#projectCard')) return;
-  // Self-heal: an older/stale stored job may predate the Project Cost data. Re-fetch the
-  // authoritative job from the server (which generates it) so the tab is never blank.
-  job = await ensureJobDetail(job, j => ((j.projectCost && j.projectCost.roles) || []).length > 0);
-  platformContext(job);
+  const { mode, data } = await loadPlatformState(j => ((j.projectCost && j.projectCost.roles) || []).length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#projectCard')) return;
+  wireRunButton('#runProjectBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('project', '#runProjectBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'project');
+      renderProjectOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'project');
+    renderProjectOrPending(data);
+    return;
+  }
   const dl = $('#downloadBtn');
-  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${job.jobId}/workbook`; dl.setAttribute('download', ''); }
-  renderProjectCost(job.projectCost || {});
+  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${data.jobId}/workbook`; dl.setAttribute('download', ''); }
+  renderProjectCost(data.projectCost || {});
 }
 
 function renderProjectCost(p) {
@@ -303,15 +503,103 @@ function renderProjectTotals(p) {
 let OPERATIONS_STATE = null;
 
 async function initOperations() {
-  let job = Store.get();
-  platformContext(job);
-  if (!showOrEmpty(job, '#operationsCard')) return;
-  // Self-heal: re-fetch the authoritative job if the stored copy lacks operating line items.
-  job = await ensureJobDetail(job, j => ((j.operations && j.operations.items) || []).length > 0);
-  platformContext(job);
+  const { mode, data } = await loadPlatformState(j => ((j.operations && j.operations.items) || []).length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#operationsCard')) return;
+  wireRunButton('#runOperationsBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('operations', '#runOperationsBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'operations');
+      renderOperationsOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'operations');
+    renderOperationsOrPending(data);
+    return;
+  }
   const dl = $('#downloadBtn');
-  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${job.jobId}/workbook`; dl.setAttribute('download', ''); }
-  renderOperations(job.operations || {});
+  if (dl) { dl.hidden = false; dl.href = `/api/estimations/${data.jobId}/workbook`; dl.setAttribute('download', ''); }
+  renderOperations(data.operations || {});
+}
+
+function renderScopeOrPending(session) {
+  if (session.scope) {
+    renderScope(session.scope);
+    return;
+  }
+  $('#tab-scope').innerHTML = '<p class="muted">Scope has not been generated yet. Click <strong>Run agent</strong> to analyze the uploaded documents.</p>';
+}
+
+function renderRequirementsOrPending(session) {
+  const requirements = session.requirements || [];
+  if (requirements.length) {
+    renderRequirements(requirements);
+    return;
+  }
+  $('#tab-requirements').innerHTML = '<p class="muted">Requirements have not been generated yet. Run Scope first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderCostOrPending(session) {
+  const dl = $('#downloadBtn');
+  if (session.cost && dl) {
+    dl.hidden = false;
+    dl.href = `/api/sessions/${session.sessionId}/workbook`;
+    dl.setAttribute('download', '');
+  } else if (dl) {
+    dl.hidden = true;
+  }
+  if (session.cost && (session.cost.lineItems || []).length) {
+    renderCost(session.cost);
+    return;
+  }
+  const totals = $('#totals'); if (totals) totals.innerHTML = '';
+  $('#tab-cost').innerHTML = '<p class="muted">Cost Model has not been generated yet. Run Scope first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderProjectOrPending(session) {
+  const dl = $('#downloadBtn');
+  if (session.projectCost && dl) {
+    dl.hidden = false;
+    dl.href = `/api/sessions/${session.sessionId}/workbook`;
+    dl.setAttribute('download', '');
+  } else if (dl) {
+    dl.hidden = true;
+  }
+  if (session.projectCost && (session.projectCost.roles || []).length) {
+    renderProjectCost(session.projectCost);
+    return;
+  }
+  const totals = $('#projectTotals'); if (totals) totals.innerHTML = '';
+  $('#tab-project').innerHTML = '<p class="muted">Project Cost has not been generated yet. Run Scope first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderOperationsOrPending(session) {
+  const dl = $('#downloadBtn');
+  if (session.operations && dl) {
+    dl.hidden = false;
+    dl.href = `/api/sessions/${session.sessionId}/workbook`;
+    dl.setAttribute('download', '');
+  } else if (dl) {
+    dl.hidden = true;
+  }
+  if (session.operations && (session.operations.items || []).length) {
+    renderOperations(session.operations);
+    return;
+  }
+  const totals = $('#operationsTotals'); if (totals) totals.innerHTML = '';
+  $('#tab-operations').innerHTML = '<p class="muted">Operation Cost has not been generated yet. Run Scope first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderCompareOrPending(session) {
+  if (session.compare) {
+    renderCompare(session.compare);
+    return;
+  }
+  $('#compareBody').innerHTML = '<p class="muted">Comparison has not been generated yet. Run Cost Model, Project Cost, and Operation Cost first, then click <strong>Run comparison</strong>.</p>';
 }
 
 function renderOperations(o) {
@@ -562,10 +850,18 @@ function renderTotals(c) {
     <div class="total-box"><div class="num">${pct}%</div><div class="lbl">Contingency</div></div>`;
 }
 
-function renderSteps(steps) {
-  if (!steps.length) { $('#tab-steps').innerHTML = '<p class="muted">No steps recorded.</p>'; return; }
-  $('#tab-steps').innerHTML = '<ul class="tight">' + steps.map(s =>
-    `<li><strong>${esc(s.step)}:</strong> ${esc(s.summary)}</li>`).join('') + '</ul>';
+function renderSteps(steps, stepStates) {
+  const statusHtml = stepStates
+    ? '<ul class="tight">' + Object.keys(stepStates).map(key => {
+      const state = stepStates[key] || {};
+      const lastRun = state.lastRunUtc ? new Date(state.lastRunUtc).toLocaleString() : 'Never';
+      return `<li><strong>${esc(key)}:</strong> ${esc(state.status || 'pending')} <span class="muted">· ${esc(lastRun)}</span>${state.error ? ` — ${esc(state.error)}` : ''}</li>`;
+    }).join('') + '</ul>'
+    : '';
+  const transcriptHtml = steps.length
+    ? '<ul class="tight">' + steps.map(s => `<li><strong>${esc(s.step)}:</strong> ${esc(s.summary)}</li>`).join('') + '</ul>'
+    : '<p class="muted">No steps recorded.</p>';
+  $('#tab-steps').innerHTML = `${statusHtml ? `<h3>Step status</h3>${statusHtml}` : ''}<h3>Transcript</h3>${transcriptHtml}`;
 }
 
 // Step instruction cards on the Agent Steps page.
@@ -584,12 +880,33 @@ async function renderStepCards() {
 }
 
 // ================================================================ COMPARE page (Build vs Buy)
-function initCompare() {
-  const job = Store.get();
-  platformContext(job);
+async function initCompare() {
+  const { mode, data } = await loadPlatformState(() => true);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#compareCard')) return;
+  wireRunButton('#runCompareBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('compare', '#runCompareBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'compare');
+      renderCompareOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'compare');
+    renderCompareOrPending(data);
+    return;
+  }
   const btn = $('#runCompareBtn');
-  if (!showOrEmpty(job, '#compareCard')) return;
-  if (btn) { btn.hidden = false; btn.addEventListener('click', () => runCompare(job.jobId)); }
+  if (btn) {
+    btn.hidden = false;
+    if (!btn.dataset.wiredLegacy) {
+      btn.dataset.wiredLegacy = '1';
+      btn.addEventListener('click', () => runCompare(data.jobId));
+    }
+  }
 }
 
 async function runCompare(jobId) {
@@ -702,7 +1019,8 @@ async function loadJobIntoPlatform(jobId) {
     const r = await fetch('/api/estimations/' + encodeURIComponent(jobId));
     if (!r.ok) return;
     const job = await r.json();
-    Store.set(job);
+    Store.setJob(job);
+    Store.clearSession();
     window.location.href = '/platform/scope';
   } catch { /* ignore */ }
 }
