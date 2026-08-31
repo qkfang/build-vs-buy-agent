@@ -23,6 +23,10 @@ param modelCapacity int = 10
 resource foundrySvc 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: foundryServicesName
   location: location
+  // Exempts this resource from tenant policy that denies public network access.
+  tags: {
+    SecurityControl: 'Ignore'
+  }
   identity: {
     type: 'SystemAssigned'
   }

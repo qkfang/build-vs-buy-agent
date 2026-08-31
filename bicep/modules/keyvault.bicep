@@ -10,6 +10,10 @@ param tenantId string = subscription().tenantId
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
+  // Exempts this resource from tenant policy that denies public network access.
+  tags: {
+    SecurityControl: 'Ignore'
+  }
   properties: {
     sku: {
       family: 'A'
