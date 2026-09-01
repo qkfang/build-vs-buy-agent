@@ -1,12 +1,9 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-using Azure.AI.Projects;
-using Azure.Identity;
-using Microsoft.Agents.AI;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Agents;
 
 namespace Proj37.CostEstimator.Web.Services;
 
@@ -24,18 +21,18 @@ namespace Proj37.CostEstimator.Web.Services;
 public sealed partial class CostComparisonService
 {
     private readonly FoundryOptions _options;
+    private readonly CompareAgent _compareAgent;
     private readonly ILogger<CostComparisonService> _logger;
 
-    public CostComparisonService(FoundryOptions options, ILogger<CostComparisonService> logger)
+    public CostComparisonService(
+        FoundryOptions options,
+        CompareAgent compareAgent,
+        ILogger<CostComparisonService> logger)
     {
         _options = options;
+        _compareAgent = compareAgent;
         _logger = logger;
     }
-
-    private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web)
-    {
-        PropertyNameCaseInsensitive = true
-    };
 
     public async Task<CostComparison> CompareAsync(EstimationResult job, CancellationToken ct = default)
     {
@@ -47,7 +44,7 @@ public sealed partial class CostComparisonService
         {
             try
             {
-                await ApplyAgentNarrativeAsync(job, comparison, ct);
+                await _compareAgent.RunAsync(job, comparison, ct);
                 comparison.Engine = "foundry";
                 return comparison;
             }
@@ -274,124 +271,8 @@ public sealed partial class CostComparisonService
         c.Reasoning.Add("Non-cost factors to weigh: building maximises control and customisation; buying accelerates time-to-value but adds vendor lock-in and per-seat/volume price growth.");
     }
 
-    // ---------------------------------------------------------------- agent narrative
-
-    private async Task ApplyAgentNarrativeAsync(EstimationResult job, CostComparison c, CancellationToken ct)
-    {
-        var agent = CreateAgent();
-        var prompt = ComparePrompt(job, c);
-        var response = await agent.RunAsync(prompt, cancellationToken: ct);
-        var json = ExtractJsonObject(response.Text ?? "");
-        var narrative = string.IsNullOrWhiteSpace(json)
-            ? null
-            : JsonSerializer.Deserialize<AgentNarrative>(json!, JsonOpts);
-
-        if (narrative is null)
-        {
-            ApplyOfflineNarrative(c);
-            c.Notes.Add("Compare agent returned no parseable narrative; used deterministic reasoning.");
-            return;
-        }
-
-        c.Summary = string.IsNullOrWhiteSpace(narrative.Summary) ? c.Summary : narrative.Summary.Trim();
-        if (!string.IsNullOrWhiteSpace(narrative.Recommendation))
-            c.Recommendation = narrative.Recommendation.Trim().ToLowerInvariant() switch
-            {
-                "build" or "buy" or "neutral" => narrative.Recommendation.Trim().ToLowerInvariant(),
-                _ => c.Recommendation
-            };
-
-        if (narrative.Reasoning is { Count: > 0 }) c.Reasoning = narrative.Reasoning;
-
-        foreach (var s in c.Sections)
-        {
-            if (narrative.SectionReasoning is not null &&
-                narrative.SectionReasoning.TryGetValue(s.Section, out var r) && !string.IsNullOrWhiteSpace(r))
-            {
-                s.Reasoning = r.Trim();
-            }
-        }
-
-        // Backfill any sections the agent skipped with a deterministic line so the UI is never blank.
-        foreach (var s in c.Sections.Where(s => string.IsNullOrWhiteSpace(s.Reasoning)))
-        {
-            var diff = Math.Abs(s.Difference);
-            s.Reasoning = s.Cheaper == "n/a"
-                ? "No comparable figure available for this section."
-                : $"{(s.Cheaper == "build" ? "Build" : "Buy")} is cheaper here by {Money(diff)}.";
-        }
-    }
-
-    private AIAgent CreateAgent()
-    {
-        var credential = string.IsNullOrWhiteSpace(_options.TenantId)
-            ? new DefaultAzureCredential()
-            : new DefaultAzureCredential(new DefaultAzureCredentialOptions { TenantId = _options.TenantId });
-        var client = new AIProjectClient(new Uri(_options.ProjectEndpoint!), credential);
-        return client.AsAIAgent(
-            model: _options.ModelDeploymentName,
-            instructions: AgentInstructions.SystemPersona + "\n\n" + AgentInstructions.Compare.Instructions,
-            name: _options.AgentName + "-compare");
-    }
-
-    private static string ComparePrompt(EstimationResult job, CostComparison c)
-    {
-        var structured = new
-        {
-            buyCostAvailable = c.BuyCostAvailable,
-            totals = c.Totals,
-            sections = c.Sections.Select(s => new
-            {
-                s.Section, s.CostType, s.BuildCost, s.BuildDetail, s.BuyCost, s.BuyDetail, s.Difference, s.Cheaper
-            })
-        };
-
-        var corpus = string.Join("\n\n", job.Documents.Select(d =>
-            $"=== FILE: {d.FileName} ===\n{(string.IsNullOrWhiteSpace(d.ExtractedText) ? d.Excerpt : d.ExtractedText)}"));
-        if (corpus.Length > 24_000) corpus = corpus[..24_000] + "…";
-
-        return $$"""
-        Compare BUILDING this solution on Azure against BUYING an off-the-shelf product.
-        The application has already computed the numbers below; do NOT recompute them.
-        Explain and recommend based strictly on these figures and the source cost section.
-
-        STRUCTURED COMPARISON:
-        {{JsonSerializer.Serialize(structured, JsonOpts)}}
-
-        Return ONLY this JSON object:
-        {
-          "summary": string,
-          "recommendation": "build" | "buy" | "neutral",
-          "sectionReasoning": { "<exact section name>": string, ... },
-          "reasoning": string[]
-        }
-
-        Use the EXACT section names from the structured comparison as the keys of sectionReasoning.
-        Choose "neutral" only when Build and Buy are within ~10% on 3-year TCO.
-
-        SOURCE DOCUMENTS (for context on what the buy price covers):
-        {{corpus}}
-        """;
-    }
-
-    private static string? ExtractJsonObject(string text)
-    {
-        int start = text.IndexOf('{');
-        int end = text.LastIndexOf('}');
-        if (start < 0 || end <= start) return null;
-        return text.Substring(start, end - start + 1);
-    }
-
     private static string Money(decimal amount) =>
         "$" + amount.ToString("N2", CultureInfo.InvariantCulture);
-
-    private sealed class AgentNarrative
-    {
-        [JsonPropertyName("summary")] public string Summary { get; set; } = "";
-        [JsonPropertyName("recommendation")] public string Recommendation { get; set; } = "";
-        [JsonPropertyName("sectionReasoning")] public Dictionary<string, string>? SectionReasoning { get; set; }
-        [JsonPropertyName("reasoning")] public List<string> Reasoning { get; set; } = new();
-    }
 
     // Matches a markdown table row with at least 3 pipe-delimited cells: | category | type | $cost | ...
     [GeneratedRegex(@"^\|\s*(?<cat>[^|]*?)\s*\|\s*(?<type>[^|]*?)\s*\|\s*(?<cost>[^|]*?)\s*\|", RegexOptions.Multiline)]

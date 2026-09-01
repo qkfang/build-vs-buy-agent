@@ -1,5 +1,6 @@
 using Proj37.CostEstimator.Web.Models;
 using Proj37.CostEstimator.Web.Services;
+using Proj37.CostEstimator.Web.Services.Agents;
 using Proj37.CostEstimator.Web.Services.Foundry;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,22 +26,29 @@ builder.Services.AddSingleton<ExcelReportGenerator>();
 builder.Services.AddSingleton<MarkdownRenderer>();
 builder.Services.AddSingleton<OfflineEstimationEngine>();
 builder.Services.AddSingleton<SampleRequirementsService>();
+builder.Services.AddSingleton<ScopeAgent>();
+builder.Services.AddSingleton<RequirementsAgent>();
+builder.Services.AddSingleton<CostModelAgent>();
+builder.Services.AddSingleton<ProjectCostAgent>();
+builder.Services.AddSingleton<OperationCostAgent>();
+builder.Services.AddSingleton<CompareAgent>();
+builder.Services.AddSingleton<FoundryEstimationEngine>();
+builder.Services.AddSingleton<CostComparisonService>();
+builder.Services.AddSingleton<SessionService>();
 
 // Engine selection: live Foundry agent when configured, otherwise deterministic offline engine.
 // FoundryEstimationEngine already falls back to offline internally on any runtime failure.
 builder.Services.AddSingleton<IEstimationEngine>(sp =>
 {
     var opts = sp.GetRequiredService<FoundryOptions>();
-    var offline = sp.GetRequiredService<OfflineEstimationEngine>();
     if (opts.IsConfigured)
     {
-        return new FoundryEstimationEngine(opts, offline, sp.GetRequiredService<ILogger<FoundryEstimationEngine>>());
+        return sp.GetRequiredService<FoundryEstimationEngine>();
     }
-    return offline;
+    return sp.GetRequiredService<OfflineEstimationEngine>();
 });
 
 builder.Services.AddSingleton<EstimationJobService>();
-builder.Services.AddSingleton<CostComparisonService>();
 
 builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
@@ -119,6 +127,55 @@ api.MapGet("/samples/{id}/html", (string id, SampleRequirementsService samples, 
 .WithName("GetSampleHtml")
 .WithDescription("Returns the sample requirement document rendered to safe HTML (Markdig) for the in-app viewer.");
 
+api.MapGet("/sessions", (SessionService svc) =>
+    Results.Ok(svc.List()))
+    .WithName("ListSessions")
+    .WithDescription("Lists persisted upload-first sessions (most recent first).");
+
+api.MapGet("/sessions/{sessionId}", (string sessionId, SessionService svc) =>
+{
+    var session = svc.Get(sessionId);
+    return session is null ? Results.NotFound(new { error = "Session not found", sessionId }) : Results.Ok(session);
+})
+.WithName("GetSession")
+.WithDescription("Gets the full persisted session JSON, including per-step results and statuses.");
+
+api.MapGet("/sessions/{sessionId}/workbook", (string sessionId, SessionService svc) =>
+{
+    if (!svc.TryGetWorkbook(sessionId, out var bytes, out var fileName))
+        return Results.NotFound(new { error = "Workbook not found", sessionId });
+
+    return Results.File(
+        bytes,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileName);
+})
+.WithName("DownloadSessionWorkbook")
+.WithDescription("Downloads the generated Excel workbook for a session once the cost, project, and operations steps are available.");
+
+api.MapPost("/sessions/{sessionId}/steps/{step}", async (string sessionId, string step, SessionService svc, CancellationToken ct) =>
+{
+    try
+    {
+        var session = await svc.RunStepAsync(sessionId, step, ct);
+        return Results.Ok(session);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, sessionId, step });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, sessionId, step });
+    }
+    catch (FileNotFoundException)
+    {
+        return Results.NotFound(new { error = "Session not found", sessionId });
+    }
+})
+.WithName("RunSessionStep")
+.WithDescription("Runs or re-runs a single agent-backed session step: scope, requirements, cost, project, operations, or compare.");
+
 api.MapGet("/estimations", (EstimationJobService svc) =>
     Results.Ok(svc.List().Select(ToListItem)))
     .WithName("ListEstimations")
@@ -161,24 +218,37 @@ api.MapPost("/estimations/{jobId}/compare", async (string jobId, EstimationJobSe
 // Multipart upload -> ingest -> estimate -> return result.
 api.MapPost("/estimations", async (HttpRequest request, EstimationJobService svc, CancellationToken ct) =>
 {
-    if (!request.HasFormContentType)
-        return Results.BadRequest(new { error = "Expected multipart/form-data with one or more 'files'." });
+    var uploadsResult = await ReadUploadsAsync(request, ct);
+    if (uploadsResult.Error is not null)
+        return Results.BadRequest(new { error = uploadsResult.Error });
 
-    var form = await request.ReadFormAsync(ct);
-    var uploads = form.Files
-        .Select(f => new EstimationJobService.UploadedFile(f.FileName, f.ContentType, f.OpenReadStream()))
-        .ToList();
-
-    if (uploads.Count == 0)
-        return Results.BadRequest(new { error = "No files uploaded." });
-
-    var job = await svc.CreateAndRunAsync(uploads, ct);
+    var job = await svc.CreateAndRunAsync(uploadsResult.Uploads!, ct);
     return job.Status == "failed"
         ? Results.UnprocessableEntity(job)
         : Results.Ok(job);
 })
 .WithName("CreateEstimation")
 .WithDescription("Uploads technical documents, runs the Foundry/offline estimation pipeline, and returns scope, requirements, and Azure cost estimate.")
+.DisableAntiforgery();
+
+api.MapPost("/sessions", async (HttpRequest request, SessionService svc, CancellationToken ct) =>
+{
+    var uploadsResult = await ReadUploadsAsync(request, ct);
+    if (uploadsResult.Error is not null)
+        return Results.BadRequest(new { error = uploadsResult.Error });
+
+    try
+    {
+        var session = await svc.CreateSessionAsync(uploadsResult.Uploads!, ct);
+        return Results.Ok(session);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("CreateSession")
+.WithDescription("Uploads technical documents, ingests them into a persisted session, and leaves all agent steps pending for later execution.")
 .DisableAntiforgery();
 
 // Convenience: run an estimation against a bundled sample document (no upload needed; great for demos/CI).
@@ -225,6 +295,21 @@ static object ToListItem(EstimationResult r) => new
     monthlyTotal = r.Cost.MonthlyTotalWithContingency,
     currency = r.Cost.Currency
 };
+
+static async Task<(List<EstimationJobService.UploadedFile>? Uploads, string? Error)> ReadUploadsAsync(HttpRequest request, CancellationToken ct)
+{
+    if (!request.HasFormContentType)
+        return (null, "Expected multipart/form-data with one or more 'files'.");
+
+    var form = await request.ReadFormAsync(ct);
+    var uploads = form.Files
+        .Select(f => new EstimationJobService.UploadedFile(f.FileName, f.ContentType, f.OpenReadStream()))
+        .ToList();
+
+    return uploads.Count == 0
+        ? (null, "No files uploaded.")
+        : (uploads, null);
+}
 
 // Exposed for integration tests / WebApplicationFactory.
 public partial class Program { }

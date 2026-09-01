@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace Proj37.CostEstimator.Web.Models;
 
 /// <summary>
@@ -38,8 +36,10 @@ public sealed class IngestedDocument
     public int CharacterCount { get; set; }
     public int WordCount { get; set; }
 
-    /// <summary>Extracted plain text used for grounding. Truncated for very large files.</summary>
-    [JsonIgnore]
+    /// <summary>
+    /// Extracted plain text used for grounding. Persisted so saved sessions can re-run individual steps
+    /// after an app restart without needing to re-ingest the original upload stream.
+    /// </summary>
     public string ExtractedText { get; set; } = "";
 
     public string? Excerpt { get; set; }

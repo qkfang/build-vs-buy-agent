@@ -7,7 +7,7 @@
 
 <section class="card upload-card">
     <h2>Upload technical documents</h2>
-    <p class="hint">Supported: .md .txt .json .csv .docx and more. Or open one of the example briefs below and run it.</p>
+    <p class="hint">Supported: .md .txt .json .csv .docx and more. Upload creates a session only; then open Scope and run each agent step when ready.</p>
     <form id="uploadForm">
         <label class="dropzone" id="dropzone">
             <input type="file" id="fileInput" name="files" multiple
@@ -16,24 +16,34 @@
         </label>
         <div id="fileList" class="file-list"></div>
         <div class="actions">
-            <button type="submit" id="estimateBtn" class="btn btn-primary">Estimate cost</button>
+            <button type="submit" id="estimateBtn" class="btn btn-primary">Create session</button>
         </div>
     </form>
     <div id="status" class="status" hidden></div>
 </section>
 
+<section class="card">
+    <h2>Load a previous run</h2>
+    <p class="hint">Sessions are saved as <code>session.json</code> files under the app data folder, so you can reopen and re-run individual steps later.</p>
+    <div class="actions">
+        <select id="previousSessionSelect">
+            <option value="">Loading sessions…</option>
+        </select>
+        <button type="button" id="loadSessionBtn" class="btn btn-secondary">Load</button>
+    </div>
+</section>
+
 <section class="card samples-card">
     <h2>Example requirement documents</h2>
-    <p class="hint">Click <strong>View</strong> to read a sample brief in a popup, or <strong>Use this</strong> to run the full estimation pipeline against it.</p>
+    <p class="hint">Click <strong>View</strong> to read a sample brief in a popup, or <strong>Use this</strong> to create a session from it.</p>
     <div id="sampleList" class="sample-list">Loading examples…</div>
 </section>
 
 <section class="card next-card" id="doneCard" hidden>
-    <h2>✓ Estimation ready</h2>
+    <h2>✓ Session ready</h2>
     <p class="hint" id="doneSummary"></p>
     <div class="actions">
         <a class="btn btn-primary" href="/platform/scope">Open Build vs Buy Agent →</a>
         <a class="btn btn-secondary" href="/estimations">View recent estimations</a>
-        <a id="doneDownload" class="btn btn-download" href="#">⬇ Download Excel</a>
     </div>
 </section>
