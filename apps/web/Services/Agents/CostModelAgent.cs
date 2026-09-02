@@ -8,29 +8,35 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class CostModelAgent : BaseFoundryAgent
 {
-    public CostModelAgent(FoundryOptions options, ILogger<CostModelAgent> logger)
+    private readonly CloudCatalogService _cloudCatalog;
+
+    public CostModelAgent(FoundryOptions options, ILogger<CostModelAgent> logger, CloudCatalogService? cloudCatalog = null)
         : base(options, logger, AgentInstructions.Cost)
     {
+        _cloudCatalog = cloudCatalog ?? new CloudCatalogService();
     }
 
     protected override string AgentNameSuffix => "cost-model-agent";
 
-    public async Task<CostEstimate> RunAsync(string corpus, ScopeSummary scope, CancellationToken ct)
+    public async Task<CostEstimate> RunAsync(string corpus, ScopeSummary scope, string cloudProvider, CancellationToken ct)
     {
         var agent = CreateAgent();
-        var plan = await RunJsonAsync<ServicePlan>(agent, ServicePlanPrompt(corpus, scope), ct);
+        var provider = CloudCatalogService.NormalizeProvider(cloudProvider);
+        var plan = await RunJsonAsync<ServicePlan>(agent, ServicePlanPrompt(corpus, scope, provider), ct);
         if (plan is null)
             throw new InvalidOperationException("Cost Model step returned no JSON.");
 
-        return CostFromPlan(plan, scope);
+        var estimate = CostFromPlan(plan, scope);
+        _cloudCatalog.ApplyToEstimate(estimate, provider);
+        return estimate;
     }
 
-    private string ServicePlanPrompt(string corpus, ScopeSummary scope) =>
+    private string ServicePlanPrompt(string corpus, ScopeSummary scope, string cloudProvider) =>
         $$"""
         {{StepInstruction.Instructions}}
 
-        Design the concrete Azure service plan to run this workload for ONE month, then estimate quantities.
-        You decide services/SKUs/quantities; do NOT compute dollar costs (we price them separately).
+        Design the concrete {{cloudProvider.ToUpperInvariant()}} service plan to run this workload for ONE month, then
+        estimate quantities. You decide services/SKUs/quantities; do NOT compute dollar costs (we price them separately).
 
         SCOPE: {{Serialize(scope)}}
 

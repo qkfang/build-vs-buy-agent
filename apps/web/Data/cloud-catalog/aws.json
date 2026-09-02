@@ -1,0 +1,112 @@
+[
+  {
+    "key": "compute.appservice",
+    "category": "Compute",
+    "service": "AWS App Runner",
+    "sku": "1 vCPU / 2 GB",
+    "unit": "per instance/mo",
+    "pricingUrl": "https://aws.amazon.com/apprunner/pricing/",
+    "pricingLabel": "AWS App Runner pricing",
+    "description": "Managed, autoscaling container hosting for web apps / APIs."
+  },
+  {
+    "key": "ai.llm",
+    "category": "AI",
+    "service": "Amazon Bedrock",
+    "sku": "Anthropic Claude / Titan",
+    "unit": "per 1K tokens",
+    "pricingUrl": "https://aws.amazon.com/bedrock/pricing/",
+    "pricingLabel": "Amazon Bedrock pricing",
+    "description": "Hosted large language model inference (chat/completions)."
+  },
+  {
+    "key": "search.ai",
+    "category": "AI",
+    "service": "Amazon OpenSearch Service",
+    "sku": "Vector engine",
+    "unit": "per service/mo",
+    "pricingUrl": "https://aws.amazon.com/opensearch-service/pricing/",
+    "pricingLabel": "Amazon OpenSearch Service pricing",
+    "description": "Vector / hybrid / full-text search and document indexing."
+  },
+  {
+    "key": "database.sql",
+    "category": "Data",
+    "service": "Amazon RDS",
+    "sku": "db.t3/db.m6g (2 vCPU)",
+    "unit": "per vCore/mo",
+    "pricingUrl": "https://aws.amazon.com/rds/pricing/",
+    "pricingLabel": "Amazon RDS pricing",
+    "description": "Managed relational database."
+  },
+  {
+    "key": "database.nosql",
+    "category": "Data",
+    "service": "Amazon DynamoDB",
+    "sku": "On-demand",
+    "unit": "per 1M RU",
+    "pricingUrl": "https://aws.amazon.com/dynamodb/pricing/",
+    "pricingLabel": "Amazon DynamoDB pricing",
+    "description": "Managed NoSQL / document database."
+  },
+  {
+    "key": "compute.serverless",
+    "category": "Compute",
+    "service": "AWS Lambda",
+    "sku": "On-demand",
+    "unit": "per 1M exec",
+    "pricingUrl": "https://aws.amazon.com/lambda/pricing/",
+    "pricingLabel": "AWS Lambda pricing",
+    "description": "Event-driven serverless compute."
+  },
+  {
+    "key": "storage.object",
+    "category": "Data",
+    "service": "Amazon S3",
+    "sku": "S3 Standard",
+    "unit": "per GB/mo",
+    "pricingUrl": "https://aws.amazon.com/s3/pricing/",
+    "pricingLabel": "Amazon S3 pricing",
+    "description": "Object storage for documents, workbooks, and artefacts."
+  },
+  {
+    "key": "observability.monitoring",
+    "category": "Observability",
+    "service": "Amazon CloudWatch",
+    "sku": "Pay-as-you-go",
+    "unit": "per GB",
+    "pricingUrl": "https://aws.amazon.com/cloudwatch/pricing/",
+    "pricingLabel": "Amazon CloudWatch pricing",
+    "description": "Logs, metrics, traces, and application telemetry."
+  },
+  {
+    "key": "security.secrets",
+    "category": "Security",
+    "service": "AWS Secrets Manager",
+    "sku": "Standard",
+    "unit": "per 10K ops",
+    "pricingUrl": "https://aws.amazon.com/secrets-manager/pricing/",
+    "pricingLabel": "AWS Secrets Manager pricing",
+    "description": "Managed secrets, keys, and certificates."
+  },
+  {
+    "key": "networking.egress",
+    "category": "Networking",
+    "service": "Data Transfer (EC2 / CloudFront)",
+    "sku": "Standard",
+    "unit": "per GB",
+    "pricingUrl": "https://aws.amazon.com/ec2/pricing/on-demand/#Data_Transfer",
+    "pricingLabel": "AWS Data Transfer pricing",
+    "description": "Outbound data transfer."
+  },
+  {
+    "key": "generic.other",
+    "category": "Other",
+    "service": "AWS Pricing Calculator",
+    "sku": "",
+    "unit": "",
+    "pricingUrl": "https://calculator.aws/",
+    "pricingLabel": "AWS Pricing Calculator",
+    "description": "Fallback reference when no specific service match is found."
+  }
+]

@@ -61,7 +61,7 @@ public sealed class FoundryEstimationEngine : IEstimationEngine
             job.Requirements = await _requirementsAgent.RunAsync(corpus, job.Scope, ct);
             job.AgentSteps.Add(new AgentStepLog { Step = "requirements", Summary = $"Foundry agent derived {job.Requirements.Count} requirements." });
 
-            job.Cost = await _costModelAgent.RunAsync(corpus, job.Scope, ct);
+            job.Cost = await _costModelAgent.RunAsync(corpus, job.Scope, CloudCatalogService.DefaultProvider, ct);
             job.AgentSteps.Add(new AgentStepLog { Step = "cost", Summary = $"Foundry agent proposed {job.Cost.LineItems.Count} services; costed locally to {job.Cost.Currency} {job.Cost.MonthlyTotalWithContingency:N2}/mo (incl. contingency)." });
 
             job.ProjectCost = await _projectCostAgent.RunAsync(corpus, job.Scope, ct);

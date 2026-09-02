@@ -15,6 +15,13 @@ namespace Proj37.CostEstimator.Web.Services;
 /// </summary>
 public sealed partial class OfflineEstimationEngine : IEstimationEngine
 {
+    private readonly CloudCatalogService _cloudCatalog;
+
+    public OfflineEstimationEngine(CloudCatalogService? cloudCatalog = null)
+    {
+        _cloudCatalog = cloudCatalog ?? new CloudCatalogService();
+    }
+
     public string Name => "offline";
 
     public Task<EstimationResult> EstimateAsync(EstimationResult job, CancellationToken ct = default)
@@ -62,14 +69,25 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
     }
 
     /// <summary>
-    /// Deterministically derives the Azure cost model from the persisted documents only.
+    /// Deterministically derives the cost model from the persisted documents only, priced against the
+    /// Azure reference catalog and then, when <paramref name="cloudProvider"/> is "gcp" or "aws",
+    /// translated to that provider's equivalent service catalog (see <see cref="CloudCatalogService"/>).
     /// </summary>
-    public CostEstimate EstimateCost(IReadOnlyCollection<IngestedDocument> documents)
+    public CostEstimate EstimateCost(IReadOnlyCollection<IngestedDocument> documents, string cloudProvider = CloudCatalogService.DefaultProvider)
     {
         var corpus = BuildCorpus(documents);
         var signals = Analyze(corpus);
-        return BuildCost(signals);
+        var estimate = BuildCost(signals);
+        ApplyCloudProvider(estimate, cloudProvider);
+        return estimate;
     }
+
+    /// <summary>
+    /// Renames each line item's service/SKU/unit and pricing reference to the selected cloud provider's
+    /// catalog equivalent (see <see cref="CloudCatalogService.ApplyToEstimate"/>).
+    /// </summary>
+    private void ApplyCloudProvider(CostEstimate estimate, string cloudProvider) =>
+        _cloudCatalog.ApplyToEstimate(estimate, cloudProvider);
 
     /// <summary>
     /// Deterministically derives the one-time project build cost from the persisted documents only.
