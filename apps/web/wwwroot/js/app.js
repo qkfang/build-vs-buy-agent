@@ -417,6 +417,8 @@ async function initProjectCost() {
   const { mode, data } = await loadPlatformState(j => ((j.projectCost && j.projectCost.roles) || []).length > 0);
   platformContext(mode, data);
   if (!showOrEmpty(data, '#projectCard')) return;
+  const teamCard = $('#teamStructureCard'); if (teamCard) teamCard.hidden = false;
+  wireTeamStructurePicker();
   wireRunButton('#runProjectBtn', mode, async () => {
     try {
       const session = await postSessionStep('project', '#runProjectBtn', 'Running…');
@@ -435,6 +437,65 @@ async function initProjectCost() {
   const dl = $('#downloadBtn');
   if (dl) { dl.hidden = false; dl.href = `/api/estimations/${data.jobId}/workbook`; dl.setAttribute('download', ''); }
   renderProjectCost(data.projectCost || {});
+}
+
+// ---- Team structure configuration: reuse a previous project's roles/rates into the grid.
+let TEAM_STRUCTURES = null;
+let TEAM_STRUCTURE_WIRED = false;
+
+async function wireTeamStructurePicker() {
+  const sel = $('#teamStructureSelect');
+  const btn = $('#loadTeamStructureBtn');
+  if (!sel || !btn) return;
+  if (!TEAM_STRUCTURE_WIRED) {
+    TEAM_STRUCTURE_WIRED = true;
+    sel.addEventListener('change', () => { btn.disabled = !sel.value; });
+    btn.addEventListener('click', () => applyTeamStructure(sel.value));
+  }
+  await loadTeamStructures();
+}
+
+async function loadTeamStructures() {
+  const sel = $('#teamStructureSelect');
+  const btn = $('#loadTeamStructureBtn');
+  if (!sel) return;
+  try {
+    if (!TEAM_STRUCTURES) {
+      const r = await fetch('/data/team-structures.json');
+      if (!r.ok) throw new Error('failed to load');
+      TEAM_STRUCTURES = await r.json();
+    }
+    if (!TEAM_STRUCTURES.length) {
+      sel.innerHTML = '<option value="">No previous team structures available</option>';
+      sel.disabled = true;
+      if (btn) btn.disabled = true;
+      return;
+    }
+    sel.innerHTML = '<option value="">Select a previous team structure…</option>' + TEAM_STRUCTURES.map(t =>
+      `<option value="${esc(t.id)}">${esc(t.name)} (${t.roles.length} roles, ${esc(t.currency)})</option>`).join('');
+    sel.disabled = false;
+    if (btn) btn.disabled = true;
+  } catch {
+    sel.innerHTML = '<option value="">Could not load team structures</option>';
+    sel.disabled = true;
+    if (btn) btn.disabled = true;
+  }
+}
+
+function applyTeamStructure(id) {
+  const tmpl = (TEAM_STRUCTURES || []).find(t => t.id === id);
+  const hint = $('#teamStructureHint');
+  if (!tmpl) return;
+  if (!PROJECT_STATE) PROJECT_STATE = {};
+  PROJECT_STATE.currency = tmpl.currency || PROJECT_STATE.currency || 'USD';
+  PROJECT_STATE.contingencyPercent = tmpl.contingencyPercent ?? PROJECT_STATE.contingencyPercent ?? 15;
+  PROJECT_STATE.notes = PROJECT_STATE.notes || [];
+  PROJECT_STATE.roles = tmpl.roles.map(r => ({
+    role: r.role, description: r.description,
+    dayRate: Number(r.dayRate) || 0, estimatedDays: Number(r.estimatedDays) || 0,
+  }));
+  renderProjectCost(PROJECT_STATE);
+  if (hint) hint.textContent = `Loaded "${tmpl.name}" — adjust day rates and estimated days below as needed.`;
 }
 
 function renderProjectCost(p) {
