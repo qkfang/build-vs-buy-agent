@@ -1,0 +1,123 @@
+[
+  {
+    "key": "compute.appservice",
+    "category": "Compute",
+    "service": "Azure App Service",
+    "sku": "Linux P1v3",
+    "unit": "per instance/mo",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/app-service/linux/",
+    "pricingLabel": "App Service pricing",
+    "description": "Managed web app / API hosting.",
+    "matchKeywords": ["App Service"]
+  },
+  {
+    "key": "ai.llm",
+    "category": "AI",
+    "service": "Microsoft Foundry (Azure OpenAI)",
+    "sku": "gpt-4o",
+    "unit": "per 1K tokens",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/",
+    "pricingLabel": "Azure OpenAI pricing",
+    "description": "Hosted large language model inference (chat/completions).",
+    "matchKeywords": ["Foundry", "OpenAI"]
+  },
+  {
+    "key": "search.ai",
+    "category": "AI",
+    "service": "Azure AI Search",
+    "sku": "Basic",
+    "unit": "per service/mo",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/search/",
+    "pricingLabel": "Azure AI Search pricing",
+    "description": "Vector / hybrid / full-text search and document indexing.",
+    "matchKeywords": ["AI Search", "Cognitive Search"]
+  },
+  {
+    "key": "database.sql",
+    "category": "Data",
+    "service": "Azure SQL Database",
+    "sku": "GP Serverless",
+    "unit": "per vCore/mo",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/azure-sql-database/single/",
+    "pricingLabel": "Azure SQL Database pricing",
+    "description": "Managed relational database.",
+    "matchKeywords": ["SQL"]
+  },
+  {
+    "key": "database.nosql",
+    "category": "Data",
+    "service": "Azure Cosmos DB",
+    "sku": "Serverless",
+    "unit": "per 1M RU",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/cosmos-db/autoscale-provisioned/",
+    "pricingLabel": "Azure Cosmos DB pricing",
+    "description": "Managed NoSQL / document database.",
+    "matchKeywords": ["Cosmos"]
+  },
+  {
+    "key": "compute.serverless",
+    "category": "Compute",
+    "service": "Azure Functions",
+    "sku": "Consumption",
+    "unit": "per 1M exec",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/functions/",
+    "pricingLabel": "Azure Functions pricing",
+    "description": "Event-driven serverless compute.",
+    "matchKeywords": ["Functions"]
+  },
+  {
+    "key": "storage.object",
+    "category": "Data",
+    "service": "Azure Blob Storage",
+    "sku": "Hot LRS",
+    "unit": "per GB/mo",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/storage/blobs/",
+    "pricingLabel": "Blob Storage pricing",
+    "description": "Object storage for documents, workbooks, and artefacts.",
+    "matchKeywords": ["Blob", "Storage"]
+  },
+  {
+    "key": "observability.monitoring",
+    "category": "Observability",
+    "service": "Log Analytics / App Insights",
+    "sku": "Pay-as-you-go",
+    "unit": "per GB",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/monitor/",
+    "pricingLabel": "Azure Monitor pricing",
+    "description": "Logs, metrics, traces, and application telemetry.",
+    "matchKeywords": ["Log Analytics", "App Insights", "Application Insights", "Monitor"]
+  },
+  {
+    "key": "security.secrets",
+    "category": "Security",
+    "service": "Azure Key Vault",
+    "sku": "Standard",
+    "unit": "per 10K ops",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/key-vault/",
+    "pricingLabel": "Key Vault pricing",
+    "description": "Managed secrets, keys, and certificates.",
+    "matchKeywords": ["Key Vault"]
+  },
+  {
+    "key": "networking.egress",
+    "category": "Networking",
+    "service": "Bandwidth (egress)",
+    "sku": "Standard",
+    "unit": "per GB",
+    "pricingUrl": "https://azure.microsoft.com/pricing/details/bandwidth/",
+    "pricingLabel": "Bandwidth pricing",
+    "description": "Outbound data transfer.",
+    "matchKeywords": ["Bandwidth", "Egress"]
+  },
+  {
+    "key": "generic.other",
+    "category": "Other",
+    "service": "Azure Pricing Calculator",
+    "sku": "",
+    "unit": "",
+    "pricingUrl": "https://azure.microsoft.com/pricing/calculator/",
+    "pricingLabel": "Azure Pricing Calculator",
+    "description": "Fallback reference when no specific service match is found.",
+    "matchKeywords": []
+  }
+]

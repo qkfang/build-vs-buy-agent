@@ -24,6 +24,7 @@ if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNEC
 builder.Services.AddSingleton<DocumentIngestionService>();
 builder.Services.AddSingleton<ExcelReportGenerator>();
 builder.Services.AddSingleton<MarkdownRenderer>();
+builder.Services.AddSingleton<CloudCatalogService>(sp => new CloudCatalogService(sp.GetRequiredService<IWebHostEnvironment>()));
 builder.Services.AddSingleton<OfflineEstimationEngine>();
 builder.Services.AddSingleton<SampleRequirementsService>();
 builder.Services.AddSingleton<ScopeAgent>();
@@ -176,6 +177,36 @@ api.MapPost("/sessions/{sessionId}/steps/{step}", async (string sessionId, strin
 .WithName("RunSessionStep")
 .WithDescription("Runs or re-runs a single agent-backed session step: scope, requirements, cost, project, operations, or compare.");
 
+api.MapPut("/sessions/{sessionId}/cloud-provider", (string sessionId, CloudProviderRequest body, SessionService svc) =>
+{
+    try
+    {
+        var session = svc.SetCloudProvider(sessionId, body.Provider);
+        return session is null ? Results.NotFound(new { error = "Session not found", sessionId }) : Results.Ok(session);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message, sessionId, provider = body.Provider });
+    }
+})
+.WithName("SetSessionCloudProvider")
+.WithDescription("Sets the target cloud platform (azure | gcp | aws) a session's services should be built on, and persists the selection with the session.");
+
+api.MapGet("/cloud-catalog", () =>
+    Results.Ok(new { providers = CloudCatalogService.SupportedProviders }))
+.WithName("ListCloudProviders")
+.WithDescription("Lists the supported cloud platform ids (azure | gcp | aws).");
+
+api.MapGet("/cloud-catalog/{provider}", (string provider, CloudCatalogService catalog) =>
+{
+    if (!CloudCatalogService.IsSupported(provider))
+        return Results.BadRequest(new { error = $"Unsupported cloud provider '{provider}'.", providers = CloudCatalogService.SupportedProviders });
+
+    return Results.Ok(catalog.GetCatalog(provider));
+})
+.WithName("GetCloudCatalog")
+.WithDescription("Returns the service catalog + first-party pricing reference URLs for a cloud platform (backed by Data/cloud-catalog/{provider}.json), for agent/MCP consumption.");
+
 api.MapGet("/estimations", (EstimationJobService svc) =>
     Results.Ok(svc.List().Select(ToListItem)))
     .WithName("ListEstimations")
@@ -313,3 +344,6 @@ static async Task<(List<EstimationJobService.UploadedFile>? Uploads, string? Err
 
 // Exposed for integration tests / WebApplicationFactory.
 public partial class Program { }
+
+/// <summary>Request body for PUT /api/sessions/{sessionId}/cloud-provider.</summary>
+public sealed record CloudProviderRequest(string Provider);

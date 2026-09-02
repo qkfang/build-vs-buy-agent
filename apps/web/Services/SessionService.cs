@@ -151,6 +151,26 @@ public sealed partial class SessionService
     }
 
     /// <summary>
+    /// Sets the target cloud platform ("azure" | "gcp" | "aws") for a session and persists the selection.
+    /// Does not re-run any step; re-run the Cost Model step afterwards to reprice/rename services for the
+    /// newly selected provider.
+    /// </summary>
+    public AgentSession? SetCloudProvider(string sessionId, string provider)
+    {
+        if (!CloudCatalogService.IsSupported(provider))
+            throw new ArgumentException($"Unsupported cloud provider '{provider}'. Expected one of: {string.Join(", ", CloudCatalogService.SupportedProviders)}.", nameof(provider));
+
+        var session = Get(sessionId);
+        if (session is null)
+            return null;
+
+        session.CloudProvider = CloudCatalogService.NormalizeProvider(provider);
+        session.UpdatedUtc = DateTimeOffset.UtcNow;
+        Persist(session);
+        return session;
+    }
+
+    /// <summary>
     /// Runs or re-runs one session step and persists the updated session state.
     /// </summary>
     public async Task<AgentSession> RunStepAsync(string sessionId, string step, CancellationToken ct = default)
@@ -311,7 +331,7 @@ public sealed partial class SessionService
         {
             try
             {
-                session.Cost = await _costModelAgent.RunAsync(corpus, session.Scope, ct);
+                session.Cost = await _costModelAgent.RunAsync(corpus, session.Scope, session.CloudProvider, ct);
                 session.Engine = "foundry";
                 session.AgentSteps.Add(new AgentStepLog { Step = "cost", Summary = $"Foundry agent proposed {session.Cost.LineItems.Count} services; costed locally to {session.Cost.Currency} {session.Cost.MonthlyTotalWithContingency:N2}/mo (incl. contingency)." });
                 return;
@@ -319,14 +339,14 @@ public sealed partial class SessionService
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Foundry cost agent failed for {SessionId}; using offline fallback.", session.SessionId);
-                session.Cost = _offline.EstimateCost(session.Documents);
+                session.Cost = _offline.EstimateCost(session.Documents, session.CloudProvider);
                 session.Engine = "offline";
                 session.AgentSteps.Add(new AgentStepLog { Step = "cost", Summary = $"Foundry cost agent failed ({ex.GetType().Name}); used deterministic offline cost model: {session.Cost.MonthlyTotalWithContingency:N2}/mo." });
                 return;
             }
         }
 
-        session.Cost = _offline.EstimateCost(session.Documents);
+        session.Cost = _offline.EstimateCost(session.Documents, session.CloudProvider);
         session.Engine = "offline";
         session.AgentSteps.Add(new AgentStepLog { Step = "cost", Summary = $"Estimated {session.Cost.LineItems.Count} Azure line items. Monthly (incl. {session.Cost.ContingencyPercent}% contingency): {session.Cost.Currency} {session.Cost.MonthlyTotalWithContingency:N2}." });
     }

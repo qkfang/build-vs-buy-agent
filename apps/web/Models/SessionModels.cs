@@ -14,6 +14,13 @@ public sealed class AgentSession
     public DateTimeOffset UpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public List<IngestedDocument> Documents { get; set; } = new();
     public string Engine { get; set; } = "offline";
+
+    /// <summary>
+    /// The target cloud platform ("azure" | "gcp" | "aws") this session's services should be built on.
+    /// Persisted with the session and used to translate the Cost Model's service catalog + pricing
+    /// references (see <c>Data/cloud-catalog/{provider}.json</c> and <see cref="Services.CloudCatalogService"/>).
+    /// </summary>
+    public string CloudProvider { get; set; } = Services.CloudCatalogService.DefaultProvider;
     public ScopeSummary? Scope { get; set; }
     public List<TechnicalRequirement> Requirements { get; set; } = new();
     public CostEstimate? Cost { get; set; }

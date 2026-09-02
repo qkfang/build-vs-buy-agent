@@ -1,0 +1,112 @@
+[
+  {
+    "key": "compute.appservice",
+    "category": "Compute",
+    "service": "Google Cloud Run",
+    "sku": "General-purpose (1 vCPU / 512MiB)",
+    "unit": "per instance/mo",
+    "pricingUrl": "https://cloud.google.com/run/pricing",
+    "pricingLabel": "Cloud Run pricing",
+    "description": "Managed, autoscaling container hosting for web apps / APIs."
+  },
+  {
+    "key": "ai.llm",
+    "category": "AI",
+    "service": "Vertex AI (Gemini)",
+    "sku": "gemini-1.5-flash",
+    "unit": "per 1K tokens",
+    "pricingUrl": "https://cloud.google.com/vertex-ai/generative-ai/pricing",
+    "pricingLabel": "Vertex AI generative AI pricing",
+    "description": "Hosted large language model inference (chat/completions)."
+  },
+  {
+    "key": "search.ai",
+    "category": "AI",
+    "service": "Vertex AI Search",
+    "sku": "Standard",
+    "unit": "per service/mo",
+    "pricingUrl": "https://cloud.google.com/generative-ai-app-builder/pricing",
+    "pricingLabel": "Vertex AI Search pricing",
+    "description": "Vector / hybrid / full-text search and document indexing."
+  },
+  {
+    "key": "database.sql",
+    "category": "Data",
+    "service": "Cloud SQL",
+    "sku": "db-custom (2 vCPU)",
+    "unit": "per vCore/mo",
+    "pricingUrl": "https://cloud.google.com/sql/pricing",
+    "pricingLabel": "Cloud SQL pricing",
+    "description": "Managed relational database."
+  },
+  {
+    "key": "database.nosql",
+    "category": "Data",
+    "service": "Firestore",
+    "sku": "Standard",
+    "unit": "per 1M RU",
+    "pricingUrl": "https://cloud.google.com/firestore/pricing",
+    "pricingLabel": "Firestore pricing",
+    "description": "Managed NoSQL / document database."
+  },
+  {
+    "key": "compute.serverless",
+    "category": "Compute",
+    "service": "Cloud Functions (2nd gen)",
+    "sku": "Consumption",
+    "unit": "per 1M exec",
+    "pricingUrl": "https://cloud.google.com/functions/pricing",
+    "pricingLabel": "Cloud Functions pricing",
+    "description": "Event-driven serverless compute."
+  },
+  {
+    "key": "storage.object",
+    "category": "Data",
+    "service": "Google Cloud Storage",
+    "sku": "Standard",
+    "unit": "per GB/mo",
+    "pricingUrl": "https://cloud.google.com/storage/pricing",
+    "pricingLabel": "Cloud Storage pricing",
+    "description": "Object storage for documents, workbooks, and artefacts."
+  },
+  {
+    "key": "observability.monitoring",
+    "category": "Observability",
+    "service": "Cloud Logging & Monitoring",
+    "sku": "Pay-as-you-go",
+    "unit": "per GB",
+    "pricingUrl": "https://cloud.google.com/stackdriver/pricing",
+    "pricingLabel": "Cloud Operations (Stackdriver) pricing",
+    "description": "Logs, metrics, traces, and application telemetry."
+  },
+  {
+    "key": "security.secrets",
+    "category": "Security",
+    "service": "Secret Manager",
+    "sku": "Standard",
+    "unit": "per 10K ops",
+    "pricingUrl": "https://cloud.google.com/secret-manager/pricing",
+    "pricingLabel": "Secret Manager pricing",
+    "description": "Managed secrets, keys, and certificates."
+  },
+  {
+    "key": "networking.egress",
+    "category": "Networking",
+    "service": "Cloud Networking (egress)",
+    "sku": "Standard",
+    "unit": "per GB",
+    "pricingUrl": "https://cloud.google.com/vpc/network-pricing",
+    "pricingLabel": "Cloud Networking pricing",
+    "description": "Outbound data transfer."
+  },
+  {
+    "key": "generic.other",
+    "category": "Other",
+    "service": "Google Cloud Pricing Calculator",
+    "sku": "",
+    "unit": "",
+    "pricingUrl": "https://cloud.google.com/products/calculator",
+    "pricingLabel": "Google Cloud Pricing Calculator",
+    "description": "Fallback reference when no specific service match is found."
+  }
+]

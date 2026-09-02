@@ -20,6 +20,21 @@
     </div>
 </section>
 
+<section class="card" id="cloudConfigCard" hidden>
+    <div class="result-head">
+        <div>
+            <h3>Cloud platform configuration</h3>
+            <p class="hint">Choose which cloud platform this project's services should be built on. The Cost Model service catalog and pricing references are translated to the selected platform the next time the Cost Model agent runs.</p>
+        </div>
+    </div>
+    <div class="env-toggle" id="cloudProviderToggle" role="tablist" aria-label="Cloud platform">
+        <button type="button" class="env-btn" data-cloud="azure" role="tab">Azure</button>
+        <button type="button" class="env-btn" data-cloud="gcp" role="tab">Google Cloud</button>
+        <button type="button" class="env-btn" data-cloud="aws" role="tab">AWS</button>
+    </div>
+    <p class="hint" id="cloudProviderStatus"></p>
+</section>
+
 <section class="card" id="emptyState">
     <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
 </section>

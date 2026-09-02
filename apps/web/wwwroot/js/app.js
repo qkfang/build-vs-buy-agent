@@ -380,6 +380,7 @@ async function initRequirements() {
 async function initCost() {
   const { mode, data } = await loadPlatformState(j => ((j.cost && j.cost.lineItems) || []).length > 0);
   platformContext(mode, data);
+  wireCloudProviderConfig(mode, data);
   if (!showOrEmpty(data, '#costCard')) return;
   wireRunButton('#runCostBtn', mode, async () => {
     try {
@@ -399,6 +400,52 @@ async function initCost() {
   const dl = $('#downloadBtn');
   if (dl) { dl.hidden = false; dl.href = `/api/estimations/${data.jobId}/workbook`; dl.setAttribute('download', ''); }
   renderCost(data.cost || {});
+}
+
+// ================================================================ Cloud platform selection
+// Lets the user pick which cloud (azure | gcp | aws) the project's services should be built on. The
+// choice is saved onto the session (persisted server-side in session.json) and used the next time the
+// Cost Model step runs to translate the service catalog + pricing references to that platform.
+function wireCloudProviderConfig(mode, data) {
+  const card = $('#cloudConfigCard');
+  if (!card) return;
+  if (mode !== 'session' || !data?.sessionId) { card.hidden = true; return; }
+  card.hidden = false;
+
+  const toggle = $('#cloudProviderToggle');
+  const status = $('#cloudProviderStatus');
+  const current = data.cloudProvider || 'azure';
+  const setActive = provider => {
+    $all('.env-btn', toggle).forEach(b => {
+      const on = b.dataset.cloud === provider;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  };
+  setActive(current);
+
+  if (toggle.dataset.wired) return;
+  toggle.dataset.wired = '1';
+  $all('.env-btn', toggle).forEach(btn => btn.addEventListener('click', async () => {
+    const provider = btn.dataset.cloud;
+    const session = Store.getSession();
+    if (!session?.sessionId) return;
+    if (status) status.textContent = 'Saving…';
+    try {
+      const r = await fetch(`/api/sessions/${encodeURIComponent(session.sessionId)}/cloud-provider`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider })
+      });
+      const payload = await r.json();
+      if (!r.ok) throw new Error(payload.error || r.statusText);
+      Store.setSession(payload);
+      setActive(payload.cloudProvider);
+      if (status) status.textContent = `Saved. Run the Cost Model agent again to rebuild services for ${payload.cloudProvider.toUpperCase()}.`;
+    } catch (err) {
+      if (status) status.textContent = `Could not save cloud platform: ${err.message}`;
+    }
+  }));
 }
 
 async function initSteps() {
