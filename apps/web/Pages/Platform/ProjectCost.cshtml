@@ -24,6 +24,18 @@
     <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
 </section>
 
+<section class="card" id="teamStructureCard" hidden>
+    <h2>Team structure configuration</h2>
+    <p class="hint">Reuse the roles, descriptions, and day rates from a previous dev team structure, then adjust as needed for this engagement.</p>
+    <div class="actions">
+        <select id="teamStructureSelect">
+            <option value="">Loading team structures…</option>
+        </select>
+        <button type="button" id="loadTeamStructureBtn" class="btn btn-secondary" disabled>Load into grid</button>
+    </div>
+    <p class="hint" id="teamStructureHint"></p>
+</section>
+
 <section class="card" id="projectCard" hidden>
     <div id="stepError" class="status error" hidden></div>
     <p class="hint">One-time cost to design and build the solution. The <strong>Day Rate</strong> and <strong>Estimated Days</strong> columns are editable — change a value to recalculate the build total live. The downloaded Excel workbook keeps these editable on a <strong>Project Cost</strong> sheet.</p>

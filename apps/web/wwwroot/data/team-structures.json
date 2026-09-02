@@ -1,0 +1,58 @@
+[
+  {
+    "id": "lean-mvp-squad",
+    "name": "Lean MVP Squad",
+    "description": "Small cross-functional team for a fast, single-workload MVP build.",
+    "currency": "USD",
+    "contingencyPercent": 10,
+    "roles": [
+      { "role": "Tech Lead", "description": "Owns architecture, code reviews, and technical decisions.", "dayRate": 950, "estimatedDays": 20 },
+      { "role": "Full-Stack Developer", "description": "Builds UI, API, and data layer features end to end.", "dayRate": 750, "estimatedDays": 40 },
+      { "role": "QA Engineer", "description": "Writes and runs test plans, manages regression suite.", "dayRate": 600, "estimatedDays": 15 },
+      { "role": "Product Owner", "description": "Prioritises backlog and validates delivered increments.", "dayRate": 700, "estimatedDays": 10 }
+    ]
+  },
+  {
+    "id": "enterprise-integration-team",
+    "name": "Enterprise Integration Team",
+    "description": "Mid-size delivery team for an enterprise system integration with governance overhead.",
+    "currency": "USD",
+    "contingencyPercent": 15,
+    "roles": [
+      { "role": "Solution Architect", "description": "Defines target architecture, integration patterns, and non-functional requirements.", "dayRate": 1100, "estimatedDays": 18 },
+      { "role": "Project Manager", "description": "Runs delivery cadence, risk log, and stakeholder reporting.", "dayRate": 850, "estimatedDays": 30 },
+      { "role": "Backend Developer", "description": "Builds services, integrations, and data pipelines.", "dayRate": 800, "estimatedDays": 50 },
+      { "role": "Frontend Developer", "description": "Implements UI components and client-side integration.", "dayRate": 750, "estimatedDays": 35 },
+      { "role": "QA Engineer", "description": "Manages test strategy, automation, and UAT support.", "dayRate": 650, "estimatedDays": 25 },
+      { "role": "DevOps Engineer", "description": "Sets up CI/CD pipelines, environments, and monitoring.", "dayRate": 850, "estimatedDays": 15 }
+    ]
+  },
+  {
+    "id": "ai-platform-build",
+    "name": "AI Platform Build Team",
+    "description": "Specialist team for building an AI/agentic platform with data engineering needs.",
+    "currency": "USD",
+    "contingencyPercent": 20,
+    "roles": [
+      { "role": "AI Solution Architect", "description": "Designs agent orchestration, model selection, and platform architecture.", "dayRate": 1200, "estimatedDays": 20 },
+      { "role": "ML/AI Engineer", "description": "Implements prompt engineering, agent workflows, and model integration.", "dayRate": 950, "estimatedDays": 45 },
+      { "role": "Data Engineer", "description": "Builds ingestion pipelines and data stores for grounding and telemetry.", "dayRate": 850, "estimatedDays": 30 },
+      { "role": "Full-Stack Developer", "description": "Builds the platform UI and API surface.", "dayRate": 750, "estimatedDays": 40 },
+      { "role": "QA Engineer", "description": "Validates functional and responsible-AI test scenarios.", "dayRate": 650, "estimatedDays": 20 },
+      { "role": "Project Manager", "description": "Coordinates delivery across engineering and data teams.", "dayRate": 800, "estimatedDays": 25 }
+    ]
+  },
+  {
+    "id": "aud-regional-team",
+    "name": "APAC Regional Delivery Team",
+    "description": "Regional team structure priced in AUD for local delivery engagements.",
+    "currency": "AUD",
+    "contingencyPercent": 12,
+    "roles": [
+      { "role": "Delivery Lead", "description": "Owns delivery plan, client communication, and quality bar.", "dayRate": 1300, "estimatedDays": 20 },
+      { "role": "Senior Developer", "description": "Leads feature build and mentors junior developers.", "dayRate": 1050, "estimatedDays": 40 },
+      { "role": "Developer", "description": "Implements features and fixes defects.", "dayRate": 850, "estimatedDays": 45 },
+      { "role": "QA Analyst", "description": "Executes test cases and reports defects.", "dayRate": 700, "estimatedDays": 20 }
+    ]
+  }
+]
