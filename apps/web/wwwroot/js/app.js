@@ -678,14 +678,69 @@ function renderScope(s) {
     </dl>`;
 }
 
+// Requirements are editable in-place: every cell is a text input (Priority is a select), rows can be
+// added or removed, and REQUIREMENTS_STATE holds the working copy that the table re-renders from.
+let REQUIREMENTS_STATE = null;
+const REQUIREMENT_PRIORITIES = ['Must', 'Should', 'Could'];
+
+function nextRequirementId(reqs) {
+  let max = 0;
+  reqs.forEach(q => {
+    const m = /(\d+)\s*$/.exec(String(q.id || ''));
+    if (m) max = Math.max(max, Number(m[1]));
+  });
+  return `REQ-${String(max + 1).padStart(3, '0')}`;
+}
+
 function renderRequirements(reqs) {
-  if (!reqs.length) { $('#tab-requirements').innerHTML = '<p class="muted">No requirements.</p>'; return; }
+  REQUIREMENTS_STATE = reqs;
+  if (!reqs.length) {
+    $('#tab-requirements').innerHTML = '<p class="muted">No requirements.</p><button type="button" class="btn btn-secondary" id="addRequirementBtn">+ Add requirement</button>';
+    $('#addRequirementBtn').addEventListener('click', onAddRequirement);
+    return;
+  }
+  const rows = reqs.map((q, idx) => `<tr>
+      <td><input class="text-input" type="text" data-row="${idx}" data-field="id" value="${esc(q.id)}" aria-label="ID for requirement ${idx + 1}" /></td>
+      <td><input class="text-input" type="text" data-row="${idx}" data-field="category" value="${esc(q.category)}" aria-label="Category for requirement ${idx + 1}" /></td>
+      <td><select class="text-input pill-select ${esc(q.priority)}" data-row="${idx}" data-field="priority" aria-label="Priority for requirement ${idx + 1}">
+        ${REQUIREMENT_PRIORITIES.map(p => `<option value="${p}" ${p === q.priority ? 'selected' : ''}>${p}</option>`).join('')}
+      </select></td>
+      <td><input class="text-input text-input-wide" type="text" data-row="${idx}" data-field="requirement" value="${esc(q.requirement)}" aria-label="Requirement text for requirement ${idx + 1}" /></td>
+      <td><input class="text-input text-input-wide" type="text" data-row="${idx}" data-field="rationale" value="${esc(q.rationale)}" aria-label="Rationale for requirement ${idx + 1}" /></td>
+      <td class="num-col"><button type="button" class="btn-icon remove-row-btn" data-row="${idx}" aria-label="Remove requirement ${idx + 1}" title="Remove requirement">✕</button></td></tr>`).join('');
   $('#tab-requirements').innerHTML = `
-    <table><thead><tr><th>ID</th><th>Category</th><th>Priority</th><th>Requirement</th><th>Rationale</th></tr></thead>
-    <tbody>${reqs.map(q => `<tr>
-      <td>${esc(q.id)}</td><td>${esc(q.category)}</td>
-      <td><span class="pill ${esc(q.priority)}">${esc(q.priority)}</span></td>
-      <td>${esc(q.requirement)}</td><td class="muted">${esc(q.rationale)}</td></tr>`).join('')}</tbody></table>`;
+    <table><thead><tr><th>ID</th><th>Category</th><th>Priority</th><th>Requirement</th><th>Rationale</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <p class="row-actions"><button type="button" class="btn btn-secondary" id="addRequirementBtn">+ Add requirement</button></p>`;
+  $all('.text-input', $('#tab-requirements')).forEach(el => el.addEventListener('input', onRequirementEdit));
+  $all('.pill-select', $('#tab-requirements')).forEach(el => el.addEventListener('change', onRequirementEdit));
+  $all('.remove-row-btn', $('#tab-requirements')).forEach(btn => btn.addEventListener('click', onRemoveRequirement));
+  $('#addRequirementBtn').addEventListener('click', onAddRequirement);
+}
+
+function onRequirementEdit(e) {
+  const idx = Number(e.target.dataset.row);
+  const field = e.target.dataset.field;
+  const reqs = REQUIREMENTS_STATE;
+  if (!reqs || !reqs[idx]) return;
+  reqs[idx][field] = e.target.value;
+  if (field === 'priority') {
+    e.target.className = `text-input pill-select ${esc(e.target.value)}`;
+  }
+}
+
+function onAddRequirement() {
+  const reqs = REQUIREMENTS_STATE || [];
+  reqs.push({ id: nextRequirementId(reqs), category: '', priority: 'Should', requirement: '', rationale: '' });
+  renderRequirements(reqs);
+}
+
+function onRemoveRequirement(e) {
+  const idx = Number(e.target.dataset.row);
+  const reqs = REQUIREMENTS_STATE;
+  if (!reqs || !reqs[idx]) return;
+  reqs.splice(idx, 1);
+  renderRequirements(reqs);
 }
 
 // Editable cost model with non-prod / prod / total environment views. Qty cells are inputs; editing
