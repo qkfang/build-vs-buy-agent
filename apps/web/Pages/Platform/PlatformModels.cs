@@ -7,7 +7,11 @@ namespace Proj37.CostEstimator.Web.Pages.Platform;
 
 public sealed class ScopeModel : PageModel { }
 public sealed class RequirementsModel : PageModel { }
+public sealed class FeaturesModel : PageModel { }
 public sealed class CostModel : PageModel { }
 public sealed class ProjectCostModel : PageModel { }
 public sealed class OperationsModel : PageModel { }
+public sealed class SpecModel : PageModel { }
+public sealed class PurchaseModel : PageModel { }
+public sealed class BuyOperationsModel : PageModel { }
 public sealed class StepsModel : PageModel { }

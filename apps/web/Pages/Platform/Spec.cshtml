@@ -1,0 +1,44 @@
+@page "/platform/spec"
+@model Proj37.CostEstimator.Web.Pages.Platform.SpecModel
+@{
+    ViewData["Title"] = "Spec";
+    ViewData["ActivePage"] = "spec";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Spec</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+            <p class="hint" id="stepStatus"></p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="runSpecBtn" hidden>▶ Run agent</button>
+            <button type="button" class="btn btn-secondary" data-agent-step="spec">ℹ Agent instructions</button>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card upload-card" id="specCard" hidden>
+    <h2>Upload vendor documents</h2>
+    <p class="hint">Upload the off-the-shelf product's own spec, pricing, and cost documents (separate from the Build tab's documents). Supported: .md .txt .json .csv .docx and more.</p>
+    <form id="buyUploadForm">
+        <label class="dropzone" id="buyDropzone">
+            <input type="file" id="buyFileInput" name="files" multiple
+                   accept=".md,.markdown,.txt,.json,.csv,.tsv,.log,.yaml,.yml,.xml,.html,.htm,.docx" />
+            <span id="buyDropLabel">Click to choose files or drag &amp; drop</span>
+        </label>
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">Upload Buy document(s)</button>
+        </div>
+    </form>
+    <div id="buyUploadStatus" class="status" hidden></div>
+    <div id="buyDocList" class="file-list"></div>
+
+    <div id="stepError" class="status error" hidden></div>
+    <div id="tab-spec"></div>
+</section>
