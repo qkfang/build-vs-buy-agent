@@ -49,7 +49,8 @@ body {
 .sublink:hover { color: var(--brand-2); background: var(--accent); }
 .sublink.active { color: var(--brand-2); border-bottom-color: var(--brand-2); background: var(--accent); }
 .sublink.active em { background: var(--brand-2); color: #fff; }
-.sublink-aux { margin-left: auto; }
+.sublink-aux { margin-left: .4rem; padding-left: .8rem; border-left: 1px solid var(--border); }
+@media (min-width: 721px) { .sublink-aux { margin-left: auto; } }
 @media (max-width: 720px) {
   .topbar-inner { flex-wrap: wrap; }
   .subnav-label { display: none; }
