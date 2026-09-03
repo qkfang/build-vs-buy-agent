@@ -7,12 +7,18 @@ namespace Proj37.CostEstimator.Web.Models;
 public sealed class AgentSession
 {
     public static readonly IReadOnlyList<string> StepOrder =
-        new[] { "scope", "requirements", "cost", "project", "operations", "compare" };
+        new[] { "scope", "requirements", "features", "cost", "project", "operations", "spec", "purchase", "buyoperations", "compare" };
 
     public string SessionId { get; set; } = $"session-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
     public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedUtc { get; set; } = DateTimeOffset.UtcNow;
     public List<IngestedDocument> Documents { get; set; } = new();
+
+    /// <summary>
+    /// Documents uploaded specifically for the Buy tab's Spec step — the vendor / off-the-shelf
+    /// solution's spec and cost material, additional to the original session <see cref="Documents"/>.
+    /// </summary>
+    public List<IngestedDocument> BuyDocuments { get; set; } = new();
     public string Engine { get; set; } = "offline";
 
     /// <summary>
@@ -23,9 +29,13 @@ public sealed class AgentSession
     public string CloudProvider { get; set; } = Services.CloudCatalogService.DefaultProvider;
     public ScopeSummary? Scope { get; set; }
     public List<TechnicalRequirement> Requirements { get; set; } = new();
+    public FeatureSet? Features { get; set; }
     public CostEstimate? Cost { get; set; }
     public ProjectBuildCost? ProjectCost { get; set; }
     public OperationCost? Operations { get; set; }
+    public BuySpecSummary? Spec { get; set; }
+    public PurchaseCost? Purchase { get; set; }
+    public OperationCost? BuyOperations { get; set; }
     public CostComparison? Compare { get; set; }
     public List<AgentStepLog> AgentSteps { get; set; } = new();
     public Dictionary<string, StepState> Steps { get; set; } = CreateDefaultSteps();

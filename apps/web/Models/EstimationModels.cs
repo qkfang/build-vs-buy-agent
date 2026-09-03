@@ -24,6 +24,21 @@ public sealed class EstimationResult
     /// <summary>Ongoing cost to run, support, and maintain the solution after go-live.</summary>
     public OperationCost Operations { get; set; } = new();
 
+    /// <summary>Prioritised feature list derived from the Scope + Requirements (Scope tab, Features step).</summary>
+    public FeatureSet Features { get; set; } = new();
+
+    /// <summary>Documents uploaded specifically for the Buy workflow (vendor/off-the-shelf spec + cost).</summary>
+    public List<IngestedDocument> BuyDocuments { get; set; } = new();
+
+    /// <summary>Vendor / off-the-shelf solution spec summary (Buy tab, Spec step).</summary>
+    public BuySpecSummary Spec { get; set; } = new();
+
+    /// <summary>One-time and recurring cost to purchase the off-the-shelf solution (Buy tab, Purchase step).</summary>
+    public PurchaseCost Purchase { get; set; } = new();
+
+    /// <summary>Ongoing cost to run the off-the-shelf/vendor solution (Buy tab, Operation Cost step).</summary>
+    public OperationCost BuyOperations { get; set; } = new();
+
     /// <summary>Raw transcript of the agent reasoning steps (for transparency / audit).</summary>
     public List<AgentStepLog> AgentSteps { get; set; } = new();
 }
@@ -227,4 +242,81 @@ public sealed class AgentStepLog
     public string Step { get; set; } = "";                 // "scope" | "requirements" | "cost"
     public string Summary { get; set; } = "";
     public DateTimeOffset TimestampUtc { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
+/// The prioritised feature list derived from the Scope + Requirements (Scope tab, Features step — the
+/// third step after Background and Requirements).
+/// </summary>
+public sealed class FeatureSet
+{
+    public List<FeatureItem> Features { get; set; } = new();
+    public List<string> Notes { get; set; } = new();
+}
+
+/// <summary>A single candidate feature to build.</summary>
+public sealed class FeatureItem
+{
+    public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Category { get; set; } = "";             // Core | Enhancement | Integration | Admin
+    public string Priority { get; set; } = "Should";       // Must | Should | Could
+}
+
+/// <summary>
+/// Summary of the off-the-shelf / vendor solution's spec, extracted from the documents uploaded on the
+/// Buy tab's Spec step (in addition to the original session documents).
+/// </summary>
+public sealed class BuySpecSummary
+{
+    public string VendorName { get; set; } = "";
+    public string ProductOverview { get; set; } = "";
+    public List<string> KeyCapabilities { get; set; } = new();
+    public List<string> Constraints { get; set; } = new();
+    public string LicensingModel { get; set; } = "";
+    public List<string> Notes { get; set; } = new();
+}
+
+/// <summary>
+/// All costs to purchase the off-the-shelf/vendor solution (one-time and recurring), extracted on the
+/// Buy tab's Purchase step. Each line is Quantity * UnitPrice, editable in the UI like the other cost
+/// models.
+/// </summary>
+public sealed class PurchaseCost
+{
+    public string Currency { get; set; } = "USD";
+    public List<PurchaseCostLineItem> Items { get; set; } = new();
+
+    /// <summary>Risk buffer applied on top of the raw purchase totals.</summary>
+    public decimal ContingencyPercent { get; set; } = 10m;
+
+    public List<string> Notes { get; set; } = new();
+
+    /// <summary>Raw one-time purchase cost (onboarding, implementation, migration, training, …).</summary>
+    public decimal OneTimeTotal => Math.Round(Items.Where(i => i.Cadence == "One-time").Sum(i => i.Cost), 2);
+
+    /// <summary>One-time purchase cost including the contingency buffer.</summary>
+    public decimal OneTimeTotalWithContingency => Math.Round(OneTimeTotal * (1 + ContingencyPercent / 100m), 2);
+
+    /// <summary>Raw recurring purchase cost (licensing, subscriptions, …), annualised.</summary>
+    public decimal RecurringAnnualTotal => Math.Round(
+        Items.Where(i => i.Cadence != "One-time").Sum(i => i.Cadence == "Monthly" ? i.Cost * 12 : i.Cost), 2);
+
+    /// <summary>Annual recurring purchase cost including the contingency buffer.</summary>
+    public decimal RecurringAnnualTotalWithContingency => Math.Round(RecurringAnnualTotal * (1 + ContingencyPercent / 100m), 2);
+}
+
+/// <summary>A single purchase cost line item (license, subscription, implementation, migration, …).</summary>
+public sealed class PurchaseCostLineItem
+{
+    public string Item { get; set; } = "";                 // "Standard subscription"
+    public string Description { get; set; } = "";
+    public string Category { get; set; } = "";             // License | Subscription | Implementation | Migration | Integration | Training | Accreditation
+    public string Cadence { get; set; } = "One-time";      // One-time | Monthly | Annual
+    public decimal Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public string Unit { get; set; } = "";                 // "per seat" / "per month" / "per project"
+
+    /// <summary>Cost = Quantity * UnitPrice (rounded).</summary>
+    public decimal Cost => Math.Round(Quantity * UnitPrice, 2);
 }
