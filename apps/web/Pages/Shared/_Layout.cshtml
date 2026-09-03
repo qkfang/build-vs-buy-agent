@@ -12,42 +12,37 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body data-page="@(page)">
-<header class="topbar">
-    <div class="brand">
-        <a class="brand-link" href="/">
-            <span class="logo">⛅</span>
-            <div>
-                <h1>Build vs Buy Agent</h1>
-                <p class="tagline">Foundry agents · documents → scope → requirements → cost → Excel</p>
-            </div>
-        </a>
-    </div>
-</header>
-
-<nav class="mainnav" aria-label="Primary">
-    <div class="nav-inner">
-        <a class="navlink nav-module @Active("upload")" href="/">
-            <span class="nav-module-icon">📤</span> Upload
-        </a>
-        <div class="nav-group nav-module @(platformActive ? "active" : "")">
-            <span class="nav-module-label"><span class="nav-module-icon">🤖</span> Build</span>
-            <div class="nav-sub">
-                <a class="navlink sub @Active("scope")" href="/platform/scope">Scope</a>
-                <a class="navlink sub @Active("requirements")" href="/platform/requirements">Requirements</a>
-                <a class="navlink sub @Active("cost")" href="/platform/cost">Cost Model</a>
-                <a class="navlink sub @Active("project")" href="/platform/project">Project Cost</a>
-                <a class="navlink sub @Active("operations")" href="/platform/operations">Operation Cost</a>
-                <a class="navlink sub @Active("steps")" href="/platform/steps">Prompts</a>
-            </div>
+<div class="site-header">
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand-link" href="/">
+                <span class="logo">⛅</span>
+                <span class="brand-text">
+                    <strong>Build vs Buy Agent</strong>
+                    <small class="tagline">Foundry agents · documents → scope → requirements → cost → Excel</small>
+                </span>
+            </a>
+            <nav class="mainnav" aria-label="Primary">
+                <a class="navlink @Active("upload")" href="/"><span class="nav-icon">📤</span> Upload</a>
+                <a class="navlink @(platformActive ? "active" : "")" href="/platform/scope"><span class="nav-icon">🤖</span> Build</a>
+                <a class="navlink @Active("compare")" href="/compare"><span class="nav-icon">⚖️</span> Compare</a>
+                <a class="navlink @Active("estimations")" href="/estimations"><span class="nav-icon">📊</span> Histories</a>
+            </nav>
         </div>
-        <a class="navlink nav-module @Active("compare")" href="/compare">
-            <span class="nav-module-icon">⚖️</span> Compare
-        </a>
-        <a class="navlink nav-module @Active("estimations")" href="/estimations">
-            <span class="nav-module-icon">📊</span> Histories
-        </a>
-    </div>
-</nav>
+    </header>
+
+    <nav class="subnav" aria-label="Workflow">
+        <div class="subnav-inner">
+            <span class="subnav-label">Workflow</span>
+            <a class="sublink @Active("scope")" href="/platform/scope"><em>1</em> Scope</a>
+            <a class="sublink @Active("requirements")" href="/platform/requirements"><em>2</em> Requirements</a>
+            <a class="sublink @Active("cost")" href="/platform/cost"><em>3</em> Cost Model</a>
+            <a class="sublink @Active("project")" href="/platform/project"><em>4</em> Project Cost</a>
+            <a class="sublink @Active("operations")" href="/platform/operations"><em>5</em> Operation Cost</a>
+            <a class="sublink sublink-aux @Active("steps")" href="/platform/steps">Prompts</a>
+        </div>
+    </nav>
+</div>
 
 <main>
     @RenderBody()
