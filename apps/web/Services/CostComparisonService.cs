@@ -79,8 +79,8 @@ public sealed partial class CostComparisonService
         var buildAzureAnnual = Money2(job.Cost.MonthlyTotalWithContingency * 12m);    // production Azure infra / yr
         var buildOpsAnnual = Money2(job.Operations.AnnualTotalWithContingency);       // run & support / yr
 
-        // ----- BUY side (parsed from documents) -----
-        var buy = ParseBuyBaseline(job);
+        // ----- BUY side (prefer structured Buy-tab data; fall back to parsing the source documents) -----
+        var buy = BuildBuyBaseline(job);
         cmp.BuyCostAvailable = buy.Found;
 
         var buyOneTime = buy.OneTimeTotal;
@@ -137,6 +137,58 @@ public sealed partial class CostComparisonService
     }
 
     private static decimal Money2(decimal amount) => Math.Round(amount, 2);
+
+    /// <summary>
+    /// Prefers the structured Buy tab data (Purchase + Operation Cost steps) when present; otherwise
+    /// falls back to regex-parsing a "buy" cost table out of the raw uploaded document text.
+    /// </summary>
+    private static BuyBaseline BuildBuyBaseline(EstimationResult job)
+    {
+        var hasStructuredData = (job.Purchase?.Items.Count ?? 0) > 0 || (job.BuyOperations?.Items.Count ?? 0) > 0;
+        if (!hasStructuredData)
+            return ParseBuyBaseline(job);
+
+        var oneTime = new List<BuyLine>();
+        var recurring = new List<BuyLine>();
+
+        foreach (var item in job.Purchase!.Items)
+        {
+            var line = new BuyLine(item.Category, item.Cadence, Money2(item.Cost));
+            if (string.Equals(item.Cadence, "One-time", StringComparison.OrdinalIgnoreCase))
+                oneTime.Add(line);
+            else
+                recurring.Add(line);
+        }
+
+        decimal licensing = 0m, support = 0m;
+        foreach (var r in recurring)
+        {
+            var annual = string.Equals(r.Type, "Monthly", StringComparison.OrdinalIgnoreCase) ? r.Cost * 12m : r.Cost;
+            if (r.Category.Contains("licen", StringComparison.OrdinalIgnoreCase)
+                || r.Category.Contains("subscription", StringComparison.OrdinalIgnoreCase))
+                licensing += annual;
+            else
+                support += annual;
+        }
+
+        if (job.BuyOperations is { Items.Count: > 0 } buyOps)
+        {
+            foreach (var item in buyOps.Items)
+            {
+                var annual = item.MonthlyCost * 12m;
+                recurring.Add(new BuyLine(item.Category, item.Cadence, annual));
+                support += annual;
+            }
+        }
+
+        return new BuyBaseline(
+            true,
+            Math.Round(oneTime.Sum(l => l.Cost), 2),
+            Math.Round(licensing, 2),
+            Math.Round(support, 2),
+            oneTime,
+            recurring);
+    }
 
     // ---------------------------------------------------------------- buy-baseline parser
 

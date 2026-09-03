@@ -15,7 +15,7 @@ namespace Proj37.CostEstimator.Tests;
 /// </summary>
 public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebApplicationFactory>
 {
-    private static readonly string[] StepKeys = ["scope", "requirements", "cost", "project", "operations", "compare"];
+    private static readonly string[] StepKeys = ["scope", "requirements", "features", "cost", "project", "operations", "spec", "purchase", "buyoperations", "compare"];
     private readonly SessionWebApplicationFactory _factory;
 
     public SessionApiTests(SessionWebApplicationFactory factory) => _factory = factory;
@@ -30,9 +30,13 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         Assert.Single(session.documents);
         Assert.Null(session.scope);
         Assert.Empty(session.requirements);
+        Assert.Null(session.features);
         Assert.Null(session.cost);
         Assert.Null(session.projectCost);
         Assert.Null(session.operations);
+        Assert.Null(session.spec);
+        Assert.Null(session.purchase);
+        Assert.Null(session.buyOperations);
         Assert.Null(session.compare);
         Assert.Empty(session.agentSteps);
         Assert.NotNull(session.steps);
@@ -66,6 +70,11 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         Assert.Equal("completed", session.steps["requirements"].status);
         Assert.NotEmpty(session.requirements);
 
+        session = await RunStepAsync(client, session.sessionId, "features");
+        Assert.Equal("completed", session.steps["features"].status);
+        Assert.NotNull(session.features);
+        Assert.NotEmpty(session.features!.features);
+
         session = await RunStepAsync(client, session.sessionId, "cost");
         Assert.Equal("completed", session.steps["cost"].status);
         Assert.NotNull(session.cost);
@@ -80,6 +89,23 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         Assert.Equal("completed", session.steps["operations"].status);
         Assert.NotNull(session.operations);
         Assert.NotEmpty(session.operations!.items);
+
+        session = await UploadBuyDocumentAsync(client, session.sessionId);
+        Assert.Single(session.buyDocuments);
+
+        session = await RunStepAsync(client, session.sessionId, "spec");
+        Assert.Equal("completed", session.steps["spec"].status);
+        Assert.NotNull(session.spec);
+        Assert.False(string.IsNullOrWhiteSpace(session.spec!.vendorName));
+
+        session = await RunStepAsync(client, session.sessionId, "purchase");
+        Assert.Equal("completed", session.steps["purchase"].status);
+        Assert.NotNull(session.purchase);
+
+        session = await RunStepAsync(client, session.sessionId, "buyoperations");
+        Assert.Equal("completed", session.steps["buyoperations"].status);
+        Assert.NotNull(session.buyOperations);
+        Assert.NotEmpty(session.buyOperations!.items);
 
         var workbook = await client.GetAsync($"/api/sessions/{session.sessionId}/workbook");
         workbook.EnsureSuccessStatusCode();
@@ -140,6 +166,22 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         return (await response.Content.ReadFromJsonAsync<SessionDto>())!;
     }
 
+    private static async Task<SessionDto> UploadBuyDocumentAsync(HttpClient client, string sessionId)
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new StringContent(
+            """
+            Vendor: Contoso SaaS Suite
+            Pricing: $5,000 one-time onboarding. $2,000/month subscription. Includes standard support.
+            """,
+            Encoding.UTF8,
+            "text/markdown"), "files", "vendor-spec.md");
+
+        var response = await client.PostAsync($"/api/sessions/{sessionId}/buy-documents", form);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<SessionDto>())!;
+    }
+
     public sealed class SessionWebApplicationFactory : WebApplicationFactory<Program>
     {
         public string DataRoot { get; } = Path.Combine(
@@ -186,9 +228,14 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         List<DocumentDto> documents,
         ScopeDto? scope,
         List<RequirementDto> requirements,
+        FeaturesDto? features,
         CostDto? cost,
         ProjectCostDto? projectCost,
         OperationsDto? operations,
+        List<DocumentDto> buyDocuments,
+        SpecDto? spec,
+        PurchaseDto? purchase,
+        OperationsDto? buyOperations,
         CompareDto? compare,
         List<AgentStepDto> agentSteps,
         Dictionary<string, StepStateDto> steps);
@@ -196,12 +243,16 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
     private sealed record DocumentDto(string fileName);
     private sealed record ScopeDto(string projectName);
     private sealed record RequirementDto(string id);
+    private sealed record FeaturesDto(List<FeatureItemDto> features);
+    private sealed record FeatureItemDto(string name);
     private sealed record CostDto(List<LineDto> lineItems);
     private sealed record LineDto(string service);
     private sealed record ProjectCostDto(List<RoleDto> roles);
     private sealed record RoleDto(string role);
     private sealed record OperationsDto(List<OperationItemDto> items);
     private sealed record OperationItemDto(string item);
+    private sealed record SpecDto(string vendorName);
+    private sealed record PurchaseDto(List<OperationItemDto> items);
     private sealed record CompareDto(string summary, string recommendation);
     private sealed record AgentStepDto(string step, string summary);
     private sealed record StepStateDto(string status, DateTimeOffset? lastRunUtc, string? error);
