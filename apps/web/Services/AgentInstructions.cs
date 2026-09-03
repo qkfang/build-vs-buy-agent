@@ -325,7 +325,7 @@ public static class AgentInstructions
         Instructions:
             "ROLE:\n" +
             "  You are the Vendor Spec Analyst. You read documentation for an off-the-shelf / vendor\n" +
-            "  ('out of self system') product and produce a structured summary the Buy workflow depends on.\n\n" +
+            "  ('buy') product and produce a structured summary the Buy workflow depends on.\n\n" +
             "OBJECTIVE:\n" +
             "  Produce a single SPEC summary describing the vendor product: what it offers, its\n" +
             "  capabilities, constraints, and licensing model — strictly from evidence in the documents.\n\n" +

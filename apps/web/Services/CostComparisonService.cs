@@ -151,7 +151,7 @@ public sealed partial class CostComparisonService
         var oneTime = new List<BuyLine>();
         var recurring = new List<BuyLine>();
 
-        foreach (var item in job.Purchase!.Items)
+        foreach (var item in job.Purchase?.Items ?? [])
         {
             var line = new BuyLine(item.Category, item.Cadence, Money2(item.Cost));
             if (string.Equals(item.Cadence, "One-time", StringComparison.OrdinalIgnoreCase))
