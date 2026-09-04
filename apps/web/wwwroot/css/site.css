@@ -30,7 +30,11 @@ body {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
 }
 .brand-link { display: flex; align-items: center; gap: .55rem; color: #fff; text-decoration: none; min-width: 0; }
-.logo { font-size: 1.35rem; line-height: 1; }
+.logo { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; flex: none; }
+.logo svg { width: 100%; height: 100%; display: block; }
+.logo-bulb { fill: url(#bvbLogoGrad); }
+.logo-dollar { fill: none; stroke: var(--brand); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.logo-base { fill: none; stroke: #cfe4ff; stroke-width: 1.7; stroke-linecap: round; }
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .brand-text strong { font-size: .95rem; font-weight: 700; white-space: nowrap; }
 .tagline { margin: 0; font-size: .7rem; opacity: .78; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

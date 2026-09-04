@@ -223,17 +223,17 @@ function showSessionReady(session) {
 // Runs every session step end to end in dependency order. The Buy branch needs a vendor document, so
 // a random bundled vendor doc is attached before the Spec step when the session has none yet.
 const RUN_ALL_STEPS = [
-  { key: 'scope', label: 'Background' },
-  { key: 'requirements', label: 'Requirements' },
-  { key: 'features', label: 'Features' },
-  { key: 'cost', label: 'Cost Model (Build)' },
-  { key: 'project', label: 'Project Cost (Build)' },
-  { key: 'operations', label: 'Operation Cost (Build)' },
-  { key: 'vendor', label: 'Vendor selection (Buy)', vendor: true },
-  { key: 'spec', label: 'Spec (Buy)' },
-  { key: 'purchase', label: 'Purchase (Buy)' },
-  { key: 'buyoperations', label: 'Operation Cost (Buy)' },
-  { key: 'compare', label: 'Build vs Buy comparison' },
+  { key: 'scope', label: '[Scope] Background' },
+  { key: 'requirements', label: '[Scope] Requirements' },
+  { key: 'features', label: '[Scope] Features' },
+  { key: 'cost', label: '[Build] Cost Model' },
+  { key: 'project', label: '[Build] Project Cost' },
+  { key: 'operations', label: '[Build] Operation Cost' },
+  { key: 'vendor', label: '[Buy] Vendor Selection', vendor: true },
+  { key: 'spec', label: '[Buy] Spec' },
+  { key: 'purchase', label: '[Buy] Purchase' },
+  { key: 'buyoperations', label: '[Buy] Operation Cost' },
+  { key: 'compare', label: 'Build vs Buy Comparison' },
 ];
 
 const RUN_ALL_STATUS = {
