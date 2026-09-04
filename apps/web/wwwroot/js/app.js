@@ -1564,7 +1564,7 @@ function renderCompare(cmp) {
     : '<p class="muted">No reasoning provided.</p>';
 
   const buyWarn = cmp.buyCostAvailable ? '' :
-    '<p class="status error" style="display:block">No off-the-shelf “buy” cost section was found in the source documents, so only the build cost is shown. Add a COTS/SaaS price list to the brief for a full comparison.</p>';
+    '<p class="status error" style="display:block">No off-the-shelf “buy” cost was found. Run the Buy tab steps (Spec → Purchase → Operation Cost) with a vendor spec/pricing document, or add a COTS/SaaS price list to the brief, for a full comparison.</p>';
 
   body.innerHTML = `
     ${buyWarn}

@@ -117,6 +117,26 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         Assert.NotNull(session.compare);
         Assert.False(string.IsNullOrWhiteSpace(session.compare!.summary));
 
+        // Consistency guard: the Compare step must reuse the Buy-tab numbers verbatim — including each
+        // step's own contingency buffer — so the Build-vs-Buy comparison stays aligned with what the
+        // Purchase and Operation Cost tabs display. (Regression test: Compare previously dropped the Buy
+        // contingency, understating the buy option relative to those tabs.)
+        Assert.True(session.compare.buyCostAvailable, "structured Buy-tab data should drive the comparison");
+        var totals = session.compare.totals;
+        Assert.NotNull(totals);
+        var purchase = session.purchase!;
+        var buyOps = session.buyOperations!;
+
+        Assert.True(purchase.oneTimeTotalWithContingency > 0m, "Purchase tab should have a one-time total");
+        Assert.True(buyOps.annualTotalWithContingency > 0m, "Buy Operation Cost tab should have an annual total");
+
+        Assert.True(Math.Abs(totals.buyOneTime - purchase.oneTimeTotalWithContingency) < 0.5m,
+            $"Compare buy one-time ({totals.buyOneTime}) should equal the Purchase tab total ({purchase.oneTimeTotalWithContingency}).");
+
+        var expectedBuyAnnual = purchase.recurringAnnualTotalWithContingency + buyOps.annualTotalWithContingency;
+        Assert.True(Math.Abs(totals.buyAnnualRecurring - expectedBuyAnnual) < 0.5m,
+            $"Compare buy annual ({totals.buyAnnualRecurring}) should equal Purchase recurring ({purchase.recurringAnnualTotalWithContingency}) + Buy Operations ({buyOps.annualTotalWithContingency}).");
+
         var beforeLastRun = session.steps["scope"].lastRunUtc;
         var beforeLogs = session.agentSteps.Count;
         session = await RunStepAsync(client, session.sessionId, "scope");
@@ -172,7 +192,13 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
         form.Add(new StringContent(
             """
             Vendor: Contoso SaaS Suite
-            Pricing: $5,000 one-time onboarding. $2,000/month subscription. Includes standard support.
+            Off-the-shelf document processing platform with API access and standard support.
+
+            | Cost Category | Type | Cost |
+            | --- | --- | --- |
+            | Onboarding & implementation | One-time | $5,000 |
+            | Platform subscription | Recurring annual | $24,000 |
+            | Standard support | Recurring annual | $6,000 |
             """,
             Encoding.UTF8,
             "text/markdown"), "files", "vendor-spec.md");
@@ -249,11 +275,15 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
     private sealed record LineDto(string service);
     private sealed record ProjectCostDto(List<RoleDto> roles);
     private sealed record RoleDto(string role);
-    private sealed record OperationsDto(List<OperationItemDto> items);
+    private sealed record OperationsDto(List<OperationItemDto> items, decimal annualTotalWithContingency);
     private sealed record OperationItemDto(string item);
     private sealed record SpecDto(string vendorName);
-    private sealed record PurchaseDto(List<OperationItemDto> items);
-    private sealed record CompareDto(string summary, string recommendation);
+    private sealed record PurchaseDto(
+        List<OperationItemDto> items,
+        decimal oneTimeTotalWithContingency,
+        decimal recurringAnnualTotalWithContingency);
+    private sealed record CompareDto(string summary, string recommendation, bool buyCostAvailable, CompareTotalsDto totals);
+    private sealed record CompareTotalsDto(decimal buildOneTime, decimal buildAnnualRecurring, decimal buyOneTime, decimal buyAnnualRecurring);
     private sealed record AgentStepDto(string step, string summary);
     private sealed record StepStateDto(string status, DateTimeOffset? lastRunUtc, string? error);
     private sealed record SessionSummaryDto(string sessionId, string? project, string status);
