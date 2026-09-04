@@ -14,10 +14,10 @@ param modelDeploymentName string = 'gpt-5.5'
 param modelName string = 'gpt-5.5'
 
 @description('Model version to deploy')
-param modelVersion string = '2024-07-18'
+param modelVersion string = '2026-04-24'
 
 @description('Model deployment capacity (thousands of tokens per minute)')
-param modelCapacity int = 10
+param modelCapacity int = 500
 
 // Azure AI Services account with Foundry project management enabled.
 resource foundrySvc 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {

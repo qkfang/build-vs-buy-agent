@@ -89,6 +89,15 @@ function wireUpload() {
       window.location.href = '/platform/scope';
     });
   }
+
+  const runAllBtn = $('#runAllAgentsBtn');
+  if (runAllBtn) {
+    runAllBtn.addEventListener('click', async () => {
+      const sessionId = sessionSelect?.value || Store.getSession()?.sessionId;
+      if (!sessionId) { setStatus('Choose a previous session (or create one) before running all agents.', 'error'); return; }
+      await runAllAgents(sessionId, runAllBtn);
+    });
+  }
 }
 
 function renderFileList() {
@@ -210,6 +219,124 @@ function showSessionReady(session) {
   card.scrollIntoView({ behavior: 'smooth' });
 }
 
+// ---------------------------------------------------------------- Run all agents (popup progress)
+// Runs every session step end to end in dependency order. The Buy branch needs a vendor document, so
+// a random bundled vendor doc is attached before the Spec step when the session has none yet.
+const RUN_ALL_STEPS = [
+  { key: 'scope', label: 'Background' },
+  { key: 'requirements', label: 'Requirements' },
+  { key: 'features', label: 'Features' },
+  { key: 'cost', label: 'Cost Model (Build)' },
+  { key: 'project', label: 'Project Cost (Build)' },
+  { key: 'operations', label: 'Operation Cost (Build)' },
+  { key: 'vendor', label: 'Vendor selection (Buy)', vendor: true },
+  { key: 'spec', label: 'Spec (Buy)' },
+  { key: 'purchase', label: 'Purchase (Buy)' },
+  { key: 'buyoperations', label: 'Operation Cost (Buy)' },
+  { key: 'compare', label: 'Build vs Buy comparison' },
+];
+
+const RUN_ALL_STATUS = {
+  pending: { icon: '○', label: 'Pending' },
+  running: { icon: '◌', label: 'Running…' },
+  done: { icon: '✓', label: 'Done' },
+  failed: { icon: '✕', label: 'Failed' },
+  skipped: { icon: '–', label: 'Skipped' },
+};
+
+function runAllProgressHtml(steps, footerHtml) {
+  const rows = steps.map(s => {
+    const meta = RUN_ALL_STATUS[s.status] || RUN_ALL_STATUS.pending;
+    const note = s.note ? ` <span class="muted">— ${esc(s.note)}</span>` : '';
+    return `<li class="run-step ${s.status}">
+      <span class="run-step-icon" aria-hidden="true">${meta.icon}</span>
+      <span class="run-step-name">${esc(s.label)}${note}</span>
+      <span class="run-step-status">${meta.label}</span>
+    </li>`;
+  }).join('');
+  return `<ol class="run-progress">${rows}</ol>${footerHtml || ''}`;
+}
+
+async function runSessionStepById(sessionId, step) {
+  const r = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/steps/${encodeURIComponent(step)}`, { method: 'POST' });
+  const payload = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(payload.error || r.statusText);
+  const state = (payload.steps || {})[step] || {};
+  if (String(state.status || '').toLowerCase() === 'failed') throw new Error(state.error || 'Agent step failed.');
+  return payload;
+}
+
+async function attachRandomVendorDoc(sessionId) {
+  const list = await fetch('/api/vendor-docs');
+  if (!list.ok) throw new Error('Could not list vendor documents.');
+  const items = await list.json();
+  if (!items.length) throw new Error('No vendor documents are available to pick from.');
+  const pick = items[Math.floor(Math.random() * items.length)];
+  const raw = await fetch('/api/vendor-docs/' + encodeURIComponent(pick.id));
+  if (!raw.ok) throw new Error(`Could not load vendor document "${pick.id}".`);
+  const fd = new FormData();
+  fd.append('files', new Blob([await raw.text()], { type: 'application/json' }), pick.fileName || (pick.id + '.json'));
+  const up = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/buy-documents`, { method: 'POST', body: fd });
+  const payload = await up.json().catch(() => ({}));
+  if (!up.ok) throw new Error(payload.error || up.statusText);
+  return { session: payload, vendorName: pick.vendorName || pick.id };
+}
+
+async function runAllAgents(sessionId, btn) {
+  const steps = RUN_ALL_STEPS.map(s => ({ ...s, status: 'pending', note: '' }));
+  const busy = '<p class="status busy">Running agents — this can take a few minutes. You can leave this popup open.</p>';
+  const paint = (footer) => setModalBody(runAllProgressHtml(steps, footer));
+  openModal(`Running all agents — ${sessionId}`, runAllProgressHtml(steps, busy));
+
+  const originalLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }
+
+  let session = await fetchSession(sessionId);
+  if (!session) {
+    if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+    paint('<p class="status error">Could not load that session.</p>');
+    return;
+  }
+
+  let failed = null;
+  for (const step of steps) {
+    step.status = 'running';
+    paint(busy);
+    try {
+      if (step.vendor) {
+        if ((session.buyDocuments || []).length) {
+          step.status = 'skipped';
+          step.note = `${session.buyDocuments.length} Buy document(s) already attached`;
+          continue;
+        }
+        const picked = await attachRandomVendorDoc(sessionId);
+        session = picked.session;
+        step.note = `picked ${picked.vendorName}`;
+      } else {
+        session = await runSessionStepById(sessionId, step.key);
+      }
+      step.status = 'done';
+    } catch (err) {
+      step.status = 'failed';
+      step.note = err.message;
+      failed = step;
+      break;
+    }
+  }
+
+  if (failed) {
+    steps.filter(s => s.status === 'pending').forEach(s => { s.status = 'skipped'; s.note = 'blocked by an earlier failure'; });
+  }
+
+  if (session?.sessionId) { Store.setSession(session); Store.clearJob(); }
+  if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
+  await loadPreviousSessions();
+
+  paint(failed
+    ? `<p class="status error">Stopped at <strong>${esc(failed.label)}</strong>: ${esc(failed.note)}</p>`
+    : '<p class="status info">All agent steps completed. <a href="/compare">Open the Build vs Buy comparison →</a></p>');
+}
+
 function setStatus(msg, kind) { const s = $('#status'); if (!s) return; s.hidden = false; s.textContent = msg; s.className = 'status ' + kind; }
 function setBusy(b) {
   const e = $('#estimateBtn');
@@ -217,6 +344,8 @@ function setBusy(b) {
   const loadBtn = $('#loadSessionBtn');
   const sel = $('#previousSessionSelect');
   if (loadBtn) loadBtn.disabled = b || !sel || !sel.value;
+  const runAllBtn = $('#runAllAgentsBtn');
+  if (runAllBtn) runAllBtn.disabled = b;
   $all('[data-use-sample]').forEach(x => x.disabled = b);
 }
 

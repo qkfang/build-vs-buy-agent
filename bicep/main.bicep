@@ -24,7 +24,10 @@ param modelDeploymentName string = 'gpt-5.5'
 param modelName string = 'gpt-5.5'
 
 @description('Model version')
-param modelVersion string = '2024-11-20'
+param modelVersion string = '2026-04-24'
+
+@description('Model deployment capacity (thousands of tokens per minute)')
+param modelCapacity int = 500
 
 @description('Storage blob container for uploads / generated workbooks')
 param containerName string = 'estimations'
@@ -83,6 +86,7 @@ module foundry './modules/foundry.bicep' = {
     modelDeploymentName: modelDeploymentName
     modelName: modelName
     modelVersion: modelVersion
+    modelCapacity: modelCapacity
   }
 }
 

@@ -12,6 +12,7 @@ param appServiceSku = 'P0v3'
 // Model deployment for the prompt agent.
 param modelDeploymentName = 'gpt-5.5'
 param modelName = 'gpt-5.5'
-param modelVersion = '2024-07-18'
+param modelVersion = '2026-04-24'
+param modelCapacity = 500
 
 param containerName = 'estimations'
