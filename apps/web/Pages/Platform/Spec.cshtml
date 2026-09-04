@@ -24,6 +24,16 @@
 </section>
 
 <section class="card upload-card" id="specCard" hidden>
+    <h2>Load a mock vendor document</h2>
+    <p class="hint">Pick a bundled mock vendor spec + pricing document (JSON) to load as a Buy document — handy for demos when you don't have a real vendor doc on hand.</p>
+    <div class="actions">
+        <select id="vendorDocSelect">
+            <option value="">Loading vendor documents…</option>
+        </select>
+        <button type="button" id="loadVendorDocBtn" class="btn btn-secondary" disabled>Load selected vendor doc</button>
+    </div>
+    <div id="vendorDocStatus" class="status" hidden></div>
+
     <h2>Upload vendor documents</h2>
     <p class="hint">Upload the off-the-shelf product's own spec, pricing, and cost documents (separate from the Build tab's documents). Supported: .md .txt .json .csv .docx and more.</p>
     <form id="buyUploadForm">

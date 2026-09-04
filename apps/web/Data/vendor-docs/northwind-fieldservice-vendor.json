@@ -1,0 +1,48 @@
+{
+  "vendorName": "FieldSync Pro",
+  "category": "Field Service Management SaaS",
+  "matchesRequirement": "02-northwind-field-service-assistant",
+  "productOverview": "FieldSync Pro is a mobile-first, off-the-shelf field service management platform covering dispatch, scheduling, offline-capable technician mobile apps, work order management, and an AI assistant for job triage and parts lookup. Sold as a multi-tenant SaaS with native iOS/Android apps.",
+  "keyCapabilities": [
+    "Drag-and-drop dispatch board with skill and location-based scheduling",
+    "Offline-first mobile app for technicians (photos, signatures, parts usage)",
+    "AI assistant for natural-language job search, triage suggestions, and parts lookup",
+    "Customer self-service booking portal and appointment reminders (SMS/email)",
+    "Inventory and truck-stock tracking with low-stock alerts",
+    "Open REST API and prebuilt connectors for common CRM/ERP systems"
+  ],
+  "integrations": ["REST API", "Zapier", "Salesforce", "QuickBooks", "Twilio (SMS)", "Google Maps routing"],
+  "constraints": [
+    "AI assistant requires at least 90 days of historical job data to reach recommended accuracy",
+    "Offline mobile sync limited to 7 days of queued changes before requiring a network sync",
+    "Multi-language support limited to English, Spanish, and French at GA",
+    "Custom workflow automation only available on the Growth and Enterprise plans"
+  ],
+  "licensingModel": "Per-technician-seat monthly subscription, tiered by plan (Starter/Growth/Enterprise), with optional add-ons billed separately.",
+  "sla": {
+    "uptime": "99.5% monthly (Starter/Growth), 99.9% monthly (Enterprise)",
+    "support": "Email/chat business hours (Starter/Growth), 24x7 phone (Enterprise)",
+    "responseTimeP1Hours": 6
+  },
+  "security": {
+    "certifications": ["SOC 2 Type II"],
+    "encryption": "AES-256 at rest, TLS 1.2+ in transit",
+    "dataResidency": "US and EU regions only"
+  },
+  "pricing": {
+    "currency": "AUD",
+    "model": "Per-seat monthly subscription plus optional AI assistant and SMS add-ons",
+    "lineItems": [
+      { "category": "Technician seat licence", "type": "Recurring (Monthly)", "cost": "$79/mo per seat", "unit": "per technician", "notes": "Growth plan, 25 seat minimum" },
+      { "category": "AI assistant add-on", "type": "Recurring (Monthly)", "cost": "$1,200/mo", "unit": "flat, all seats", "notes": "Requires Growth plan or higher" },
+      { "category": "Implementation & onboarding", "type": "One-time", "cost": "$14,000", "unit": "flat", "notes": "Includes data migration and dispatcher training" },
+      { "category": "SMS notification bundle", "type": "Recurring (Monthly)", "cost": "$0.04 per SMS", "unit": "per message", "notes": "Estimated 5,000 SMS/mo typical usage" },
+      { "category": "Premium 24x7 support", "type": "Recurring (Annual)", "cost": "$6,000/yr", "unit": "flat", "notes": "Enterprise plan only" }
+    ],
+    "costTableMarkdown": "| Cost category | Type | Cost |\n|---|---|---|\n| Technician seat licence (25 seats) | Recurring (Monthly) | $1,975/mo |\n| AI assistant add-on | Recurring (Monthly) | $1,200/mo |\n| Implementation & onboarding | One-time | $14,000 |\n| Premium 24x7 support | Recurring (Annual) | $6,000/yr |\n"
+  },
+  "notes": [
+    "Mock vendor document generated for the Build vs Buy Agent demo; not a real product.",
+    "Intended as the 'Buy' counterpart to the Northwind Field Service Assistant sample requirement."
+  ]
+}

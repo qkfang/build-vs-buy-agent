@@ -175,6 +175,12 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
     {
         var estimate = new PurchaseCost { Currency = AzurePricingCatalog.Currency, ContingencyPercent = 10m };
         var text = string.Join("\n\n", buyDocuments.Select(d => string.IsNullOrWhiteSpace(d.ExtractedText) ? (d.Excerpt ?? "") : d.ExtractedText));
+        // Mock/JSON vendor docs often embed a pipe-table as a JSON string value (e.g. "costTableMarkdown":
+        // "| ... |\n| ... |"), where the row separators are literal "\n" escape sequences rather than real
+        // line breaks. Unescape only "|\n" sequences immediately followed by another "|" (i.e. the boundary
+        // between two table rows) so the row regex below still finds them, without touching unrelated text
+        // that happens to contain a literal backslash-n (e.g. file paths, regex patterns).
+        text = JsonEscapedTableRowBreakRegex().Replace(text, "|\n");
 
         foreach (Match row in BuyCostTableRowRegex().Matches(text))
         {
@@ -248,6 +254,9 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
 
     [GeneratedRegex(@"^\|\s*(?<cat>[^|]*?)\s*\|\s*(?<type>[^|]*?)\s*\|\s*(?<cost>[^|]*?)\s*\|", RegexOptions.Multiline)]
     private static partial Regex BuyCostTableRowRegex();
+
+    [GeneratedRegex(@"\|\\n(?=\|)")]
+    private static partial Regex JsonEscapedTableRowBreakRegex();
 
     [GeneratedRegex(@"\$?\s*([\d][\d,]*(?:\.\d+)?)")]
     private static partial Regex BuyMoneyRegex();

@@ -1,0 +1,48 @@
+{
+  "vendorName": "Wingtip Insight Cloud",
+  "category": "Retail Analytics API / SaaS",
+  "matchesRequirement": "03-wingtip-retail-analytics-api",
+  "productOverview": "Wingtip Insight Cloud is a hosted retail analytics platform exposing a REST/GraphQL API for sales, inventory, and customer analytics, with pre-built dashboards and a data pipeline that ingests POS and e-commerce feeds. Sold as a usage-priced API product with an optional dashboard UI layer.",
+  "keyCapabilities": [
+    "REST and GraphQL analytics APIs over sales, inventory, and customer datasets",
+    "Prebuilt POS and e-commerce connectors (Shopify, Square, Lightspeed)",
+    "Near-real-time streaming ingestion with sub-15-minute data freshness SLA",
+    "Embedded dashboard/report builder (white-labelable)",
+    "Role-based multi-store / multi-tenant data isolation",
+    "Scheduled exports to data warehouse (Snowflake, BigQuery, Azure Synapse)"
+  ],
+  "integrations": ["REST API", "GraphQL API", "Shopify", "Square", "Lightspeed", "Snowflake", "BigQuery", "Azure Synapse"],
+  "constraints": [
+    "GraphQL API rate-limited to 500 requests/minute per tenant on Standard plan",
+    "Historical backfill limited to 24 months of POS data at onboarding",
+    "White-label dashboard branding requires Enterprise plan",
+    "Data warehouse export scheduling minimum interval is hourly, not real-time"
+  ],
+  "licensingModel": "Usage-based subscription priced per monthly API call volume and connected store count, with an optional flat-fee dashboard add-on.",
+  "sla": {
+    "uptime": "99.95% monthly (API), 99.9% monthly (dashboard)",
+    "support": "Email/chat business hours (Standard), 24x7 on-call for API outages (Enterprise)",
+    "responseTimeP1Hours": 2
+  },
+  "security": {
+    "certifications": ["SOC 2 Type II", "PCI DSS (Level 1 service provider)"],
+    "encryption": "AES-256 at rest, TLS 1.2+ in transit",
+    "dataResidency": "Customer-selectable: US, EU, or APAC (Australia) region"
+  },
+  "pricing": {
+    "currency": "AUD",
+    "model": "Base platform fee plus metered API calls and per-store connector fee",
+    "lineItems": [
+      { "category": "Platform base fee", "type": "Recurring (Monthly)", "cost": "$2,400/mo", "unit": "flat", "notes": "Standard plan, includes 2M API calls/mo" },
+      { "category": "API call overage", "type": "Recurring (Monthly)", "cost": "$0.90 per 1,000 calls", "unit": "per 1,000 calls over allotment", "notes": "Billed monthly in arrears" },
+      { "category": "Store connector fee", "type": "Recurring (Monthly)", "cost": "$35/mo per store", "unit": "per connected store", "notes": "Estimated 40 stores typical" },
+      { "category": "Dashboard add-on (white-label)", "type": "Recurring (Annual)", "cost": "$15,000/yr", "unit": "flat", "notes": "Enterprise plan only" },
+      { "category": "Onboarding & data migration", "type": "One-time", "cost": "$20,000", "unit": "flat", "notes": "Includes 24-month POS backfill" }
+    ],
+    "costTableMarkdown": "| Cost category | Type | Cost |\n|---|---|---|\n| Platform base fee | Recurring (Monthly) | $2,400/mo |\n| Store connector fee (40 stores) | Recurring (Monthly) | $1,400/mo |\n| Dashboard add-on (white-label) | Recurring (Annual) | $15,000/yr |\n| Onboarding & data migration | One-time | $20,000 |\n"
+  },
+  "notes": [
+    "Mock vendor document generated for the Build vs Buy Agent demo; not a real product.",
+    "Intended as the 'Buy' counterpart to the Wingtip Retail Analytics API sample requirement."
+  ]
+}
