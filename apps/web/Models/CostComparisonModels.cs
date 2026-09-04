@@ -2,8 +2,9 @@ namespace Proj37.CostEstimator.Web.Models;
 
 /// <summary>
 /// The result of the Compare step: a Build-vs-Buy cost comparison between the agentic Azure "build"
-/// estimate (produced by the estimation pipeline) and the off-the-shelf "buy" baseline extracted from
-/// the source document's cost section. The numeric analysis is deterministic and auditable; the Compare
+/// estimate (produced by the estimation pipeline) and the off-the-shelf "buy" baseline taken from the
+/// Buy tab steps (Purchase + Operation Cost) when present, otherwise extracted from the source
+/// document's cost section. The numeric analysis is deterministic and auditable; the Compare
 /// agent enriches it with a narrative summary, a recommendation, and per-section reasoning.
 /// </summary>
 public sealed class CostComparison
@@ -17,7 +18,7 @@ public sealed class CostComparison
     /// <summary>Reporting currency for all figures (USD).</summary>
     public string Currency { get; set; } = "USD";
 
-    /// <summary>True when a "buy" / off-the-shelf cost section was found in the source documents.</summary>
+    /// <summary>True when a "buy" baseline was available — from the Buy tab steps (Purchase / Operation Cost) or, failing that, a cost section in the source documents.</summary>
     public bool BuyCostAvailable { get; set; }
 
     /// <summary>The agent's overall verdict.</summary>
