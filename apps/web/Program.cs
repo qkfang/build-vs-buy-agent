@@ -27,6 +27,7 @@ builder.Services.AddSingleton<MarkdownRenderer>();
 builder.Services.AddSingleton<CloudCatalogService>(sp => new CloudCatalogService(sp.GetRequiredService<IWebHostEnvironment>()));
 builder.Services.AddSingleton<OfflineEstimationEngine>();
 builder.Services.AddSingleton<SampleRequirementsService>();
+builder.Services.AddSingleton<VendorDocsService>();
 builder.Services.AddSingleton<ScopeAgent>();
 builder.Services.AddSingleton<RequirementsAgent>();
 builder.Services.AddSingleton<FeaturesAgent>();
@@ -131,6 +132,23 @@ api.MapGet("/samples/{id}/html", (string id, SampleRequirementsService samples, 
 })
 .WithName("GetSampleHtml")
 .WithDescription("Returns the sample requirement document rendered to safe HTML (Markdig) for the in-app viewer.");
+
+// Mock vendor documents shown on the Spec (Buy tab) page as a dropdown, so a vendor spec + pricing
+// doc can be loaded straight into a session's Buy documents without needing an upload.
+api.MapGet("/vendor-docs", (VendorDocsService vendorDocs) =>
+    Results.Ok(vendorDocs.List()))
+    .WithName("ListVendorDocs")
+    .WithDescription("Lists the bundled mock vendor documents (JSON) available to load as Buy documents.");
+
+api.MapGet("/vendor-docs/{id}", (string id, VendorDocsService vendorDocs) =>
+{
+    var json = vendorDocs.Read(id);
+    return json is null
+        ? Results.NotFound(new { error = "Vendor document not found", id })
+        : Results.Text(json, "application/json");
+})
+.WithName("GetVendorDoc")
+.WithDescription("Returns the raw JSON for one mock vendor document.");
 
 api.MapGet("/sessions", (SessionService svc) =>
     Results.Ok(svc.List()))

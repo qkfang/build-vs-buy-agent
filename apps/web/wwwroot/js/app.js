@@ -665,6 +665,7 @@ async function initSpec() {
   platformContext(mode, data);
   if (!showOrEmpty(data, '#specCard')) return;
   wireBuyDocumentUpload(mode);
+  wireVendorDocLoader();
   wireRunButton('#runSpecBtn', mode, async () => {
     try {
       const session = await postSessionStep('spec', '#runSpecBtn', 'Running…');
@@ -1072,6 +1073,55 @@ function renderBuyDocuments(session) {
   list.innerHTML = docs.length
     ? docs.map(d => `<div class="file-chip"><span>📄 ${esc(d.fileName)}</span></div>`).join('')
     : '<p class="muted">No Buy documents uploaded yet.</p>';
+}
+
+async function loadVendorDocs() {
+  const select = $('#vendorDocSelect');
+  const btn = $('#loadVendorDocBtn');
+  if (!select) return;
+  try {
+    const r = await fetch('/api/vendor-docs');
+    const items = await r.json();
+    if (!items.length) { select.innerHTML = '<option value="">No mock vendor documents available</option>'; return; }
+    select.innerHTML = '<option value="">Select a mock vendor document…</option>' +
+      items.map(v => `<option value="${esc(v.id)}" data-file-name="${esc(v.fileName)}">${esc(v.vendorName)} — ${esc(v.category)}</option>`).join('');
+    if (btn) btn.disabled = false;
+  } catch {
+    select.innerHTML = '<option value="">Could not load vendor documents</option>';
+  }
+}
+
+function wireVendorDocLoader() {
+  const select = $('#vendorDocSelect');
+  const btn = $('#loadVendorDocBtn');
+  if (!select || !btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  loadVendorDocs();
+  select.addEventListener('change', () => { btn.disabled = !select.value; });
+  btn.addEventListener('click', async () => {
+    const status = $('#vendorDocStatus');
+    const id = select.value;
+    if (!id) return;
+    const session = Store.getSession();
+    if (!session?.sessionId) { if (status) { status.hidden = false; status.textContent = 'Load or create a session first.'; status.className = 'status error'; } return; }
+    const fileName = select.selectedOptions[0]?.dataset.fileName || (id + '.json');
+    if (status) { status.hidden = false; status.textContent = 'Loading vendor document…'; status.className = 'status busy'; }
+    try {
+      const raw = await fetch('/api/vendor-docs/' + encodeURIComponent(id));
+      if (!raw.ok) throw new Error('Could not load vendor document.');
+      const text = await raw.text();
+      const fd = new FormData();
+      fd.append('files', new Blob([text], { type: 'application/json' }), fileName);
+      const r = await fetch(`/api/sessions/${encodeURIComponent(session.sessionId)}/buy-documents`, { method: 'POST', body: fd });
+      const payload = await r.json();
+      if (!r.ok) throw new Error(payload.error || r.statusText);
+      Store.setSession(payload);
+      renderBuyDocuments(payload);
+      if (status) { status.textContent = 'Vendor document loaded as a Buy document. Click Run agent to summarise the spec.'; status.className = 'status info'; }
+    } catch (err) {
+      if (status) { status.textContent = 'Load failed: ' + err.message; status.className = 'status error'; }
+    }
+  });
 }
 
 let buySelectedFiles = [];
