@@ -80,10 +80,7 @@ public sealed class FoundryAgentProvisioner
                 Instructions = instructions
             };
 
-            var creation = new ProjectsAgentVersionCreationOptions(definition)
-            {
-                Description = $"proj37 build-vs-buy estimator — {agentName}"
-            };
+            var creation = new ProjectsAgentVersionCreationOptions(definition);
 
             version = await admin.CreateAgentVersionAsync(agentName, creation, cancellationToken: ct);
             _logger.LogInformation(
