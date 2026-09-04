@@ -188,6 +188,8 @@ public static class AgentInstructions
             "QUALITY BAR:\n" +
             "  • Every line has a meter, a defensible quantity, a unit price, and a first-party pricing link.\n" +
             "  • Non-prod quantities are consistently smaller than prod for the same line.\n" +
+            "  • AI lines show their workings: volume × steps × context/retrieval/completion tokens, plus\n" +
+            "    retries and evaluation traffic. A token number with no derivation is not acceptable.\n" +
             "  • Quantities feed an editable Cost Model (UI + Excel), so keep them clean and realistic.\n\n" +
             "GROUNDING:\n" +
             "  Ground unit prices and pricing links in Microsoft's official Azure pricing pages (Microsoft\n" +
