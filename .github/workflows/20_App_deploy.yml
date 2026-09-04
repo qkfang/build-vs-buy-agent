@@ -19,11 +19,12 @@ permissions:
 env:
   RESOURCE_GROUP: rg-bvb
   DOTNET_VERSION: "10.0.x"
-  APP_PROJECT: apps/web/Proj37.CostEstimator.Web.csproj
+  APP_PROJECT: apps/web/build_vs_buy.Web.csproj
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - name: Checkout
         uses: actions/checkout@v5
