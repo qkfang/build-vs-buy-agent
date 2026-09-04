@@ -37,11 +37,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Ship the bundled sample SOW with the published artifact. The Web SDK auto-copies
-         wwwroot but NOT a top-level Data/ folder, so without this the "Run sample brief"
-         endpoint (Program.cs reads ContentRootPath/Data/sample-statement-of-work.md) 404s
-         on a published / RunFromPackage deploy even though it works under `dotnet run`. -->
-    <Content Update="Data\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Ship the bundled sample SOW and requirement docs with the published artifact. The Web SDK
+         auto-copies wwwroot but NOT a top-level Data/ folder, so without this the "Run sample brief"
+         endpoint and /api/samples return nothing on a published / RunFromPackage deploy even though
+         they work under `dotnet run`. Remove from the SDK's default globs first (which classify
+         Data\**\*.json as Content and Data\**\*.md as None) so a single Include covers every file
+         type without tripping the duplicate-item error. -->
+    <Content Remove="Data\**" />
+    <None Remove="Data\**" />
+    <Content Include="Data\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

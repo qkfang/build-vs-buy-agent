@@ -30,6 +30,12 @@ public static class AgentInstructions
         "  • Ground every architectural choice in the supplied documents — do not invent requirements.\n" +
         "  • Separate production from non-production sizing; non-prod is a scaled-down dev/test footprint.\n" +
         "  • Align to the Azure Well-Architected Framework (cost, reliability, security, operations).\n" +
+        "  • Build vs buy is never binary. It has three parts: which platform is primary, how each\n" +
+        "    capability is sourced (Reuse / Buy / Configure / Extend / Build), and which controls should\n" +
+        "    be shared across the enterprise rather than rebuilt inside each solution.\n" +
+        "  • Expose every commercial assumption as a named, challengeable statement — volume drivers,\n" +
+        "    licensing basis, consumption, labour rates, support coverage, growth and exit. A hidden\n" +
+        "    assumption is a defect, not a simplification.\n" +
         "OUTPUT DISCIPLINE: When a step asks for JSON, respond with ONLY one valid JSON object matching " +
         "the requested schema — no markdown, no prose, no code fences, no trailing commentary.";
 
@@ -56,23 +62,37 @@ public static class AgentInstructions
             "  3. Infer the workload profile (web, API, AI/LLM, relational/NoSQL data, eventing, batch).\n" +
             "  4. Estimate expected scale from any stated users, requests, data volumes, or SLAs; if the\n" +
             "     documents are silent, choose a defensible POC-scale assumption and record it.\n" +
-            "  5. Classify data sensitivity (public, internal, PII, regulated) from the content described.\n" +
-            "  6. Decide the target environment (production vs non-production/POC) from deployment intent.\n\n" +
+            "  5. Capture the COMMERCIAL VOLUME DRIVERS that move cost on both the build and buy paths:\n" +
+            "     users (named / active / concurrent), cases or transactions, documents and pages,\n" +
+            "     messages or conversations, agent steps per task, environments required, and the\n" +
+            "     peak-to-average multiplier. An unstated driver cannot be costed or challenged later.\n" +
+            "  6. Classify data sensitivity (public, internal, PII, regulated) from the content described.\n" +
+            "  7. Decide the target environment (production vs non-production/POC) from deployment intent.\n" +
+            "  8. Flag any CONSTRAINT that could later disqualify a sourcing option, as an assumption or an\n" +
+            "     out-of-scope item: information barriers / data isolation, reserved human decision\n" +
+            "     authority, identity and source-system permission enforcement, end-to-end traceability,\n" +
+            "     grounding in approved knowledge, data residency / retention / deletion / legal hold,\n" +
+            "     approval and reversal of high-impact actions, evaluability of quality and drift,\n" +
+            "     dependence on preview features, and the ability to exit or port to another supplier.\n\n" +
             "OUTPUT CONTRACT (single JSON object, exactly these fields):\n" +
             "  projectName      — the project / system name\n" +
             "  overview         — 2-3 sentence summary of what is being built\n" +
             "  businessGoal     — the business outcome the solution drives\n" +
             "  inScope[]        — capabilities explicitly in scope\n" +
             "  outOfScope[]     — explicitly excluded items\n" +
-            "  assumptions[]    — sizing / pricing / deployment assumptions you relied on\n" +
+            "  assumptions[]    — sizing / pricing / deployment assumptions you relied on, INCLUDING any\n" +
+            "                     volume driver or constraint above that you inferred rather than read\n" +
             "  workloadProfile  — e.g. \"web front end + API + AI workload + relational data store\"\n" +
-            "  expectedScale    — e.g. \"~5k MAU, ~50 req/s peak\"\n" +
+            "  expectedScale    — enumerate the volume drivers, e.g. \"~5k MAU / ~800 concurrent, ~20k cases\n" +
+            "                     per month, ~60k document pages per month, ~50 req/s peak (3× average)\"\n" +
             "  dataSensitivity  — e.g. \"internal business data\" | \"contains PII\" | \"regulated\"\n" +
             "  environment      — \"production\" | \"non-production (POC/dev)\"\n\n" +
             "QUALITY BAR:\n" +
             "  • Every claim is traceable to the source text or listed as an explicit assumption.\n" +
             "  • No invented features, integrations, or compliance obligations.\n" +
-            "  • Lists are concise and de-duplicated; prose fields are tight (no filler).\n\n" +
+            "  • Lists are concise and de-duplicated; prose fields are tight (no filler).\n" +
+            "  • Every volume driver is quoted from the documents or recorded as an assumption — never\n" +
+            "    silently omitted.\n\n" +
             "GROUNDING:\n" +
             "  Use only the supplied documents. Where the text is ambiguous, prefer the most conservative\n" +
             "  interpretation and surface the ambiguity as an assumption rather than a fact.");
@@ -94,21 +114,32 @@ public static class AgentInstructions
             "  • The original source documents (for traceability and detail).\n\n" +
             "METHOD:\n" +
             "  1. Walk each scope element and ask: what must be true of the Azure solution to deliver it?\n" +
-            "  2. Cover every category: Compute, Data, AI (if relevant), Security, Networking, Observability.\n" +
+            "  2. Cover every category: Compute, Data, AI (if relevant), Security, Networking, Observability,\n" +
+            "     Governance.\n" +
             "  3. For security, always include managed identity + Key Vault and keyless access where possible.\n" +
             "  4. For networking, always include HTTPS-only / TLS and restricted data exposure.\n" +
             "  5. For observability, always include centralized logging/metrics/traces.\n" +
-            "  6. Assign MoSCoW priority and a one-line rationale tying the requirement back to scope/docs.\n\n" +
+            "  6. For governance, cover the non-negotiable control gates any option must satisfy: data\n" +
+            "     isolation / information barriers, reserved human decision authority on high-impact\n" +
+            "     actions, identity and source-system permissions enforced through every call, end-to-end\n" +
+            "     traceability of inputs / sources / versions / outputs / approvals / overrides, grounding\n" +
+            "     in approved knowledge with unverified information declared, data residency / retention /\n" +
+            "     deletion / legal hold, approval-reject-timeout-reversal on high-impact actions, and\n" +
+            "     evaluability of quality, reliability, safety and drift. Add an exit / portability\n" +
+            "     requirement so data, configuration and operations can move if the supplier changes.\n" +
+            "  7. Assign MoSCoW priority and a one-line rationale tying the requirement back to scope/docs.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"requirements\": [ { id, category, requirement, rationale, priority } ] }\n" +
             "    id        — REQ-001, REQ-002, … (sequential)\n" +
-            "    category  — Compute | Data | Networking | Security | AI | Observability\n" +
+            "    category  — Compute | Data | Networking | Security | AI | Observability | Governance\n" +
             "    priority  — Must | Should | Could\n" +
             "    rationale — why this is required, traceable to scope or a document statement\n\n" +
             "QUALITY BAR:\n" +
-            "  • 8-14 requirements; each is atomic, testable, and non-overlapping.\n" +
+            "  • 8-16 requirements; each is atomic, testable, and non-overlapping.\n" +
             "  • Every requirement traces to a scope item or document statement (no orphans).\n" +
-            "  • Security, networking, and observability baselines are always present.\n\n" +
+            "  • Security, networking, observability, and governance baselines are always present.\n" +
+            "  • Governance requirements are written so they can be tested as pass/fail gates against any\n" +
+            "    candidate option — build, buy, or configure.\n\n" +
             "GROUNDING:\n" +
             "  Derive only from the scope and documents. Do not specify exact SKUs or prices here — sizing and\n" +
             "  costing happen in the Cost Model step.");
@@ -134,10 +165,14 @@ public static class AgentInstructions
             "  2. For every line, estimate the PRODUCTION monthly quantity for its meter from expected scale.\n" +
             "  3. Estimate a NON-PRODUCTION quantity for the same meter — a scaled-down dev/test footprint of\n" +
             "     the same architecture (fewer instances, lower volumes, smaller tiers).\n" +
-            "  4. Provide a best-estimate USD reference unit price per meter; do NOT compute dollar totals.\n" +
-            "  5. For each line, cite the official Microsoft Azure pricing page for that service so the rate\n" +
+            "  4. For AI lines, derive tokens from the actual usage shape rather than a flat guess: messages\n" +
+            "     or tasks per month × agent steps per task × (prompt context size + retrieved grounding\n" +
+            "     content + completion), then add retries/failed runs and the evaluation and regression-test\n" +
+            "     traffic needed to keep quality measurable. State each of these in the line's assumption.\n" +
+            "  5. Provide a best-estimate USD reference unit price per meter; do NOT compute dollar totals.\n" +
+            "  6. For each line, cite the official Microsoft Azure pricing page for that service so the rate\n" +
             "     is auditable (e.g. https://azure.microsoft.com/pricing/details/app-service/linux/).\n" +
-            "  6. Set a contingency buffer appropriate to estimation uncertainty.\n\n" +
+            "  7. Set a contingency buffer appropriate to estimation uncertainty.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"services\": [ { service, sku, category, meter, assumption, quantity, nonProdQuantity,\n" +
             "                     unitPrice, unit, pricingReferenceUrl, pricingReferenceLabel } ],\n" +

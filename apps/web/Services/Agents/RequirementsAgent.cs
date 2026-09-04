@@ -35,14 +35,16 @@ public sealed class RequirementsAgent : BaseFoundryAgent
 
         Return JSON: { "requirements": [ {
           "id": "REQ-001",
-          "category": "Compute|Data|Networking|Security|AI|Observability",
+          "category": "Compute|Data|Networking|Security|AI|Observability|Governance",
           "requirement": string,
           "rationale": string,
           "priority": "Must|Should|Could"
         } ] }
 
         Cover compute, data, AI/Foundry (if relevant), security (managed identity, Key Vault), networking
-        (HTTPS-only), and observability. 8-14 requirements.
+        (HTTPS-only), observability, and governance (data isolation, reserved human decision authority,
+        permission enforcement, traceability, grounding, residency/retention, reversal of high-impact
+        actions, evaluability, and exit/portability). 8-16 requirements.
 
         DOCUMENTS:
         {{corpus}}
