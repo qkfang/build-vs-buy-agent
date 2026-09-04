@@ -22,6 +22,12 @@
     <div id="status" class="status" hidden></div>
 </section>
 
+<section class="card samples-card">
+    <h2>Example requirement documents</h2>
+    <p class="hint">Click <strong>View</strong> to read a sample brief in a popup, or <strong>Use this</strong> to create a session from it.</p>
+    <div id="sampleList" class="sample-list">Loading examples…</div>
+</section>
+
 <section class="card">
     <h2>Load a previous run</h2>
     <p class="hint">Sessions are saved as <code>session.json</code> files under the app data folder, so you can reopen and re-run individual steps later.</p>
@@ -30,20 +36,14 @@
             <option value="">Loading sessions…</option>
         </select>
         <button type="button" id="loadSessionBtn" class="btn btn-secondary">Load</button>
-        <button type="button" id="runAllAgentsBtn" class="btn btn-primary">▶ Run all agents</button>
     </div>
-</section>
-
-<section class="card samples-card">
-    <h2>Example requirement documents</h2>
-    <p class="hint">Click <strong>View</strong> to read a sample brief in a popup, or <strong>Use this</strong> to create a session from it.</p>
-    <div id="sampleList" class="sample-list">Loading examples…</div>
 </section>
 
 <section class="card next-card" id="doneCard" hidden>
     <h2>✓ Session ready</h2>
     <p class="hint" id="doneSummary"></p>
     <div class="actions">
+        <button type="button" id="runAllAgentsBtn" class="btn btn-primary">▶ Run all agents</button>
         <a class="btn btn-primary" href="/platform/scope">Open Build vs Buy Agent →</a>
         <a class="btn btn-secondary" href="/estimations">View recent estimations</a>
     </div>
