@@ -216,11 +216,22 @@ public static class AgentInstructions
             "  1. Choose the delivery roles the build actually needs. Always include a Solution Architect,\n" +
             "     Project Manager, and QA Engineer. Add Backend, Frontend, AI/ML, Data, and DevOps roles\n" +
             "     only when the scope/requirements call for them (e.g. AI/ML only if the workload uses AI).\n" +
-            "  2. For each role, set a defensible reference DAY RATE (USD/day) for a delivery-team member.\n" +
-            "  3. Estimate the person-days each role needs, scaled to complexity, scope size, and expected\n" +
+            "  2. For each role, set a defensible reference DAY RATE (USD/day) for a delivery-team member,\n" +
+            "     and state in the description whether it is an INTERNAL or PARTNER/vendor resource — the\n" +
+            "     two carry materially different rates and availability, and mixing them hides cost.\n" +
+            "  3. Cover the workstreams that are routinely under-estimated, not just feature development:\n" +
+            "     integration with source systems, networking and connectivity, data preparation and\n" +
+            "     migration, monitoring and alerting setup, security hardening, and assurance activities\n" +
+            "     (control testing, penetration testing, accreditation, sign-off). Fold each into the\n" +
+            "     relevant role's days and name it in that role's description.\n" +
+            "  4. Call out any SPECIALIST skill the build depends on (e.g. agent evaluation, identity\n" +
+            "     federation, regulated-data handling) in the role description — scarcity drives both rate\n" +
+            "     and schedule risk.\n" +
+            "  5. Estimate the person-days each role needs, scaled to complexity, scope size, and expected\n" +
             "     scale — a small POC is a few weeks of effort; an enterprise build is materially larger.\n" +
-            "  4. Do NOT compute dollar totals per role; the application does rate × days and sums them.\n" +
-            "  5. Set a delivery contingency buffer appropriate to estimation uncertainty.\n\n" +
+            "     State the implied elapsed delivery duration in the Project Manager's description.\n" +
+            "  6. Do NOT compute dollar totals per role; the application does rate × days and sums them.\n" +
+            "  7. Set a delivery contingency buffer appropriate to estimation uncertainty.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"roles\": [ { role, description, dayRate, estimatedDays } ],\n" +
             "    \"contingencyPercent\": number }\n" +
@@ -232,6 +243,9 @@ public static class AgentInstructions
             "QUALITY BAR:\n" +
             "  • Roles are non-overlapping; effort is realistic and traceable to scope complexity.\n" +
             "  • Larger / more complex scope yields more roles and more days than a small POC.\n" +
+            "  • Integration, data preparation, security and assurance effort is visible — never absorbed\n" +
+            "    silently into a developer line.\n" +
+            "  • Every role states internal vs partner and any specialist skill it depends on.\n" +
             "  • Rates and days feed an editable Project Cost table (UI + Excel), so keep them clean.\n\n" +
             "GROUNDING:\n" +
             "  Base rates and effort on typical Azure delivery engagements. Treat all figures as reference\n" +
@@ -257,11 +271,19 @@ public static class AgentInstructions
             "METHOD:\n" +
             "  1. Cover the standard operating activities: application support (L2/L3), monitoring &\n" +
             "     incident response, software updates & patching, and minor enhancements / change requests.\n" +
-            "  2. Add security & compliance review effort when the data is PII / regulated.\n" +
-            "  3. Add AI model monitoring, prompt tuning, and evaluation effort when the workload uses AI.\n" +
-            "  4. For each line, set a defensible monthly quantity (e.g. hours/mo) and a unit price\n" +
+            "  2. State the SUPPORT COVERAGE the sizing assumes (business hours vs 24×7, target response and\n" +
+            "     restoration times, on-call rota) in the relevant line's description — coverage, not\n" +
+            "     ticket volume alone, is what drives support cost.\n" +
+            "  3. State the RELEASE FREQUENCY the sizing assumes (e.g. monthly release train vs continuous\n" +
+            "     delivery) and size change/release management to match.\n" +
+            "  4. Add security & compliance review effort when the data is PII / regulated.\n" +
+            "  5. For AI workloads, size the ongoing work the model actually creates: knowledge and content\n" +
+            "     maintenance (re-indexing, curating grounding sources), prompt and agent tuning, quality\n" +
+            "     and drift evaluation, and the regression re-testing triggered when the underlying model\n" +
+            "     version changes. Model change is periodic and unavoidable — do not treat it as one-off.\n" +
+            "  6. For each line, set a defensible monthly quantity (e.g. hours/mo) and a unit price\n" +
             "     (e.g. USD/hour). Do NOT compute dollar totals; the application does quantity × unit price.\n" +
-            "  5. Set a contingency buffer appropriate to operating-model uncertainty.\n\n" +
+            "  7. Set a contingency buffer appropriate to operating-model uncertainty.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"items\": [ { item, description, category, cadence, quantity, unitPrice, unit } ],\n" +
             "    \"contingencyPercent\": number }\n" +
