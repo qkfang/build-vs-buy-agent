@@ -45,12 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // ================================================================ UPLOAD page
 let selectedFiles = [];
 
-function initUpload() {
+async function initUpload() {
   wireUpload();
   loadSamples();
-  loadPreviousSessions();
-  const session = Store.getSession();
-  if (session && session.sessionId) showSessionReady(session);
+  await loadPreviousSessions();
+  await syncSelectedSessionCard({ scroll: false });
 }
 
 function wireUpload() {
@@ -74,6 +73,7 @@ function wireUpload() {
     sessionSelect.addEventListener('change', () => {
       const loadBtn = $('#loadSessionBtn');
       if (loadBtn) loadBtn.disabled = !sessionSelect.value;
+      syncSelectedSessionCard({ scroll: false });
     });
   }
 
@@ -177,8 +177,8 @@ async function createSession(call) {
     setStatus('Session created. Open Scope and click Run agent to start the pipeline.', 'info');
     Store.setSession(session);
     Store.clearJob();
-    showSessionReady(session);
     await loadPreviousSessions();
+    showSessionReady(session);
   } catch (err) {
     setStatus('Request error: ' + err.message, 'error');
   } finally {
@@ -210,13 +210,39 @@ async function loadPreviousSessions() {
   }
 }
 
-function showSessionReady(session) {
+function showSessionReady(session, opts = {}) {
   const card = $('#doneCard');
   if (!card) return;
   card.hidden = false;
-  $('#doneSummary').textContent =
-    `${session.documents?.length || 0} document(s) ingested into ${session.sessionId}. No agent step has run yet — open Scope and click Run agent.`;
-  card.scrollIntoView({ behavior: 'smooth' });
+  const states = Object.values(session.steps || {});
+  const done = states.filter(s => String(s.status || '').toLowerCase() === 'completed').length;
+  $('#doneSummary').innerHTML =
+    `<strong>${esc(session.scope?.projectName || session.sessionId)}</strong> · <code>${esc(session.sessionId)}</code> · `
+    + (done
+      ? `${done} of ${states.length} agent step(s) completed.`
+      : 'No agent step has run yet — click Run all agents, or open Scope to run them one at a time.');
+
+  const files = $('#doneFiles');
+  if (files) {
+    const docs = (session.documents || []).map(d => ({ name: d.fileName, kind: 'Requirements' }))
+      .concat((session.buyDocuments || []).map(d => ({ name: d.fileName, kind: 'Vendor' })));
+    files.innerHTML = docs.length
+      ? docs.map(d => `<span class="file-chip"><span>📄 ${esc(d.name)}</span><span class="muted">${d.kind}</span></span>`).join('')
+      : '<span class="muted">No documents in this session.</span>';
+  }
+  if (opts.scroll !== false) card.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Keeps the "Selected session" card (and its Run all agents button) pointed at whatever the dropdown shows.
+async function syncSelectedSessionCard(opts = {}) {
+  const card = $('#doneCard');
+  if (!card) return null;
+  const sessionId = $('#previousSessionSelect')?.value;
+  if (!sessionId) { card.hidden = true; return null; }
+  const session = await fetchSession(sessionId);
+  if (!session) { card.hidden = true; return null; }
+  showSessionReady(session, opts);
+  return session;
 }
 
 // ---------------------------------------------------------------- Run all agents (popup progress)
@@ -331,6 +357,7 @@ async function runAllAgents(sessionId, btn) {
   if (session?.sessionId) { Store.setSession(session); Store.clearJob(); }
   if (btn) { btn.disabled = false; btn.textContent = originalLabel; }
   await loadPreviousSessions();
+  await syncSelectedSessionCard({ scroll: false });
 
   paint(failed
     ? `<p class="status error">Stopped at <strong>${esc(failed.label)}</strong>: ${esc(failed.note)}</p>`

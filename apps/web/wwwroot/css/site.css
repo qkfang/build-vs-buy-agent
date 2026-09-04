@@ -73,6 +73,8 @@ main { max-width: 1320px; margin: .85rem auto; padding: 0 .9rem; display: grid; 
 .dropzone input { display: none; }
 .file-list { margin: .5rem 0; display: grid; gap: .25rem; }
 .file-chip { background: #f0f3f9; border: 1px solid var(--border); border-radius: 6px; padding: .3rem .55rem; font-size: .8rem; display: flex; justify-content: space-between; }
+.session-files { display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0 .1rem; }
+.session-files .file-chip { gap: .5rem; }
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .3rem; }
 .btn { border: none; border-radius: 6px; padding: .45rem .85rem; font-size: .84rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: .35rem; }
 .btn-primary { background: var(--brand-2); color: #fff; }
