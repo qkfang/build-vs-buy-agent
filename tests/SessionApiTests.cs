@@ -198,7 +198,7 @@ public sealed class SessionApiTests : IClassFixture<SessionApiTests.SessionWebAp
             {
                 config.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Foundry:Enabled"] = "false",
+                    ["Foundry:ProjectEndpoint"] = string.Empty,
                     ["Storage:LocalDataFolder"] = DataRoot
                 });
             });

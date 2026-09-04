@@ -34,7 +34,7 @@ Foundry file-search / vector-store guidance.
                                                   5-sheet .xlsx workbook
 ```
 
-- **Live mode (`Foundry:Enabled=true` + endpoint):** a Microsoft Foundry prompt agent
+- **Live mode (`Foundry:ProjectEndpoint` configured):** a Microsoft Foundry prompt agent
   (Microsoft Agent Framework, in-process `AIProjectClient.AsAIAgent(...)`) performs the reasoning in
   three grounded JSON steps. The agent proposes the Azure service plan; the app prices it locally
   using `AzurePricingCatalog` so the **arithmetic is deterministic and auditable** (the model decides
@@ -85,7 +85,6 @@ Set these (env vars or `appsettings`) and sign in with a credential that has the
 
 | Setting | Example |
 | --- | --- |
-| `Foundry__Enabled` | `true` |
 | `Foundry__ProjectEndpoint` | `https://<name>.services.ai.azure.com/api/projects/<project>` |
 | `Foundry__ModelDeploymentName` | `gpt-4o` |
 

@@ -27,7 +27,7 @@
 - [ ] Run `proj37_foundry_cost_estimator_infra` (workflow_dispatch).
 - [ ] Run `proj37_foundry_cost_estimator_deploy` (workflow_dispatch).
 - [ ] Verify `/api/health` returns 200 and the site loads; run a sample estimation in the cloud.
-- [ ] (Optional) Set `foundryEnabled=true` and confirm the live agent path + model quota.
+- [ ] Confirm the live Foundry agent path + model quota.
 
 ## Possible enhancements
 - [ ] Swap pricing catalog for the Azure Retail Prices API.

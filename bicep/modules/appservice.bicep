@@ -22,9 +22,6 @@ param foundryTenantId string = tenant().tenantId
 @description('Model deployment name used by the prompt agent')
 param foundryModelDeploymentName string
 
-@description('Enable the live Foundry agent path (false => deterministic offline engine)')
-param foundryEnabled bool = true
-
 @description('Storage account name for uploads / generated workbooks')
 param storageAccountName string
 
@@ -82,10 +79,6 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'ASPNETCORE_ENVIRONMENT'
           value: 'Production'
-        }
-        {
-          name: 'Foundry__Enabled'
-          value: string(foundryEnabled)
         }
         {
           name: 'Foundry__ProjectEndpoint'

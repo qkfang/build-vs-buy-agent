@@ -2,15 +2,12 @@ namespace Proj37.CostEstimator.Web.Models;
 
 /// <summary>
 /// Bound from configuration section "Foundry". Controls how the estimation pipeline talks to
-/// Microsoft Foundry. When <see cref="Enabled"/> is false (or endpoint missing), the app uses the
-/// deterministic offline estimation engine so the POC is fully runnable without live Azure access.
+/// Microsoft Foundry. When the endpoint is missing, the app uses the deterministic offline
+/// estimation engine so the POC is fully runnable without live Azure access.
 /// </summary>
 public sealed class FoundryOptions
 {
     public const string SectionName = "Foundry";
-
-    /// <summary>Master switch. If false, always use the offline engine.</summary>
-    public bool Enabled { get; set; }
 
     /// <summary>Foundry project endpoint, e.g. https://&lt;name&gt;.services.ai.azure.com/api/projects/&lt;project&gt;.</summary>
     public string? ProjectEndpoint { get; set; }
@@ -28,7 +25,7 @@ public sealed class FoundryOptions
     public bool UseFileSearch { get; set; } = true;
 
     /// <summary>True when configuration is sufficient to attempt a live run.</summary>
-    public bool IsConfigured => Enabled && !string.IsNullOrWhiteSpace(ProjectEndpoint);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ProjectEndpoint);
 }
 
 /// <summary>Bound from "Storage". Optional blob persistence of uploads / generated workbooks.</summary>

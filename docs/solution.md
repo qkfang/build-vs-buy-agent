@@ -16,11 +16,11 @@ requirements, estimate Azure run costs from the required services, and produce E
 | Excel output | `ExcelReportGenerator` (ClosedXML) | Produces a 5-sheet workbook with **live formulas** so reviewers can adjust inputs. |
 | Persistence | File-based JSON + `.xlsx` under `/home/site/data` | Zero-dependency POC persistence; production-upgradeable to Blob (`Storage:AccountUrl`). |
 | Infra | Bicep (App Service, Foundry, Storage, Key Vault, monitoring) + RBAC | Mirrors `template-repo-agent`; managed identity, keyless auth. |
-| CI/CD | GitHub Actions (`infra` + `deploy`) | Matches repo conventions (`rg-bvb`, `AZURE_CREDENTIALS`, `azure/login@v2`). |
+| CI/CD | GitHub Actions (`infra` + `deploy`) | Matches repo conventions (`rg-bvb`, `AZURE_CREDENTIALS`, `azure/login@v1`). |
 
 ### Two-engine design
 `IEstimationEngine` has two implementations selected at startup:
-- **`FoundryEstimationEngine`** (when `Foundry:Enabled` and an endpoint are configured): runs three
+- **`FoundryEstimationEngine`** (when a `Foundry:ProjectEndpoint` is configured): runs three
   grounded prompt-agent calls returning JSON — **SCOPE**, **REQUIREMENTS**, and a concrete **SERVICE
   PLAN**. The plan (services/SKUs/quantities) is priced locally so totals are deterministic. Any
   failure (auth, quota, transient) transparently falls back to the offline engine and records why.

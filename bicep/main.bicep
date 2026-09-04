@@ -17,9 +17,6 @@ param baseName string = 'bvb'
 ])
 param appServiceSku string = 'P0v3'
 
-@description('Enable the live Foundry agent path. When false the app uses its deterministic offline engine.')
-param foundryEnabled bool = true
-
 @description('Model deployment name for the prompt agent')
 param modelDeploymentName string = 'gpt-4o'
 
@@ -100,7 +97,6 @@ module appService './modules/appservice.bicep' = {
     foundryProjectEndpoint: foundry.outputs.aiProjectEndpoint
     foundryTenantId: subscription().tenantId
     foundryModelDeploymentName: foundry.outputs.modelDeploymentName
-    foundryEnabled: foundryEnabled
     storageAccountName: storage.outputs.storageAccountName
     storageContainerName: storage.outputs.containerName
   }
