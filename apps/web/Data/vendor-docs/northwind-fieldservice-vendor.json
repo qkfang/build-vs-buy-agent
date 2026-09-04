@@ -42,7 +42,7 @@
     "costTableMarkdown": "| Cost category | Type | Cost |\n|---|---|---|\n| Technician seat licence (25 seats) | Recurring (Monthly) | $1,975/mo |\n| AI assistant add-on | Recurring (Monthly) | $1,200/mo |\n| Implementation & onboarding | One-time | $14,000 |\n| Premium 24x7 support | Recurring (Annual) | $6,000/yr |\n"
   },
   "notes": [
-    "Mock vendor document generated for the Build vs Buy Agent demo; not a real product.",
+    "vendor document generated for the Build vs Buy Agent demo; not a real product.",
     "Intended as the 'Buy' counterpart to the Northwind Field Service Assistant sample requirement."
   ]
 }

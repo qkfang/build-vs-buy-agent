@@ -1082,8 +1082,8 @@ async function loadVendorDocs() {
   try {
     const r = await fetch('/api/vendor-docs');
     const items = await r.json();
-    if (!items.length) { select.innerHTML = '<option value="">No mock vendor documents available</option>'; return; }
-    select.innerHTML = '<option value="">Select a mock vendor document…</option>' +
+    if (!items.length) { select.innerHTML = '<option value="">No vendor documents available</option>'; return; }
+    select.innerHTML = '<option value="">Select a vendor document…</option>' +
       items.map(v => `<option value="${esc(v.id)}" data-file-name="${esc(v.fileName)}">${esc(v.vendorName)} — ${esc(v.category)}</option>`).join('');
     if (btn) btn.disabled = false;
   } catch {

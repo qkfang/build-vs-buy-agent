@@ -42,7 +42,7 @@
     "costTableMarkdown": "| Cost category | Type | Cost |\n|---|---|---|\n| Platform base fee | Recurring (Monthly) | $2,400/mo |\n| Store connector fee (40 stores) | Recurring (Monthly) | $1,400/mo |\n| Dashboard add-on (white-label) | Recurring (Annual) | $15,000/yr |\n| Onboarding & data migration | One-time | $20,000 |\n"
   },
   "notes": [
-    "Mock vendor document generated for the Build vs Buy Agent demo; not a real product.",
+    "vendor document generated for the Build vs Buy Agent demo; not a real product.",
     "Intended as the 'Buy' counterpart to the Wingtip Retail Analytics API sample requirement."
   ]
 }

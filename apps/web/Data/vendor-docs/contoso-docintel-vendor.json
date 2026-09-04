@@ -42,7 +42,7 @@
     "costTableMarkdown": "| Cost category | Type | Cost |\n|---|---|---|\n| Platform subscription | Recurring (Annual) | $48,000/yr |\n| Custom model onboarding | One-time | $18,500 |\n| Dedicated tenant add-on | Recurring (Annual) | $22,000/yr |\n| Premium support (24x7 P1) | Recurring (Annual) | $9,600/yr |\n"
   },
   "notes": [
-    "Mock vendor document generated for the Build vs Buy Agent demo; not a real product.",
+    "vendor document generated for the Build vs Buy Agent demo; not a real product.",
     "Intended as the 'Buy' counterpart to the Contoso Document Intelligence Platform sample requirement."
   ]
 }

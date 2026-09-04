@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace Proj37.CostEstimator.Web.Services;
 
 /// <summary>
-/// Enumerates and serves the bundled mock vendor documents (JSON) that ship under
+/// Enumerates and serves the bundled vendor documents (JSON) that ship under
 /// <c>Data/vendor-docs/</c>. These are surfaced on the Spec (Buy tab) page as a dropdown of
 /// off-the-shelf "vendor spec + pricing" documents that can be loaded in place of an upload, so the
 /// Spec/Purchase/Buy-operations agents have something concrete to summarise without requiring the
@@ -21,7 +21,7 @@ public sealed partial class VendorDocsService
 
     public sealed record VendorDoc(string Id, string VendorName, string Category, string FileName, int SizeBytes);
 
-    /// <summary>Lists the mock vendor docs (ordered by file name), with vendor name/category read from the JSON.</summary>
+    /// <summary>Lists the vendor docs (ordered by file name), with vendor name/category read from the JSON.</summary>
     public IReadOnlyList<VendorDoc> List()
     {
         if (!Directory.Exists(_dir)) return Array.Empty<VendorDoc>();
@@ -49,7 +49,7 @@ public sealed partial class VendorDocsService
         return docs;
     }
 
-    /// <summary>Returns the raw JSON for a mock vendor doc id, or null if not found. Path-traversal safe.</summary>
+    /// <summary>Returns the raw JSON for a vendor doc id, or null if not found. Path-traversal safe.</summary>
     public string? Read(string id)
     {
         if (string.IsNullOrWhiteSpace(id) || !SafeIdRegex().IsMatch(id)) return null;
