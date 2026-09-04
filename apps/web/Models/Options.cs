@@ -15,8 +15,8 @@ public sealed class FoundryOptions
     /// <summary>Optional Entra tenant ID to authenticate against (the tenant that owns the Foundry project).</summary>
     public string? TenantId { get; set; }
 
-    /// <summary>Model deployment name, e.g. gpt-5.4.</summary>
-    public string ModelDeploymentName { get; set; } = "gpt-5.4";
+    /// <summary>Model deployment name, e.g. gpt-5.5.</summary>
+    public string ModelDeploymentName { get; set; } = "gpt-5.5";
 
     /// <summary>Prefix for the persistent Foundry agent names, e.g. "bvb" -&gt; <c>bvb-scope-agent</c>.</summary>
     public string AgentName { get; set; } = "bvb";

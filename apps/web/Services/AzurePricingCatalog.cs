@@ -34,13 +34,11 @@ public static class AzurePricingCatalog
 
     public static readonly IReadOnlyDictionary<string, ModelTokenRate> ModelTokenRates = new Dictionary<string, ModelTokenRate>(StringComparer.OrdinalIgnoreCase)
     {
-        ["gpt-4o"] = new(0.0050m, 0.0150m),
-        ["gpt-4o-mini"] = new(0.000165m, 0.00066m),
-        ["gpt-5.4"] = new(0.0050m, 0.0150m),   // reference; treated like a flagship GPT tier
+        ["gpt-5.5"] = new(0.0050m, 0.0150m),
     };
 
     public static ModelTokenRate GetModelRate(string deployment)
-        => ModelTokenRates.TryGetValue(deployment, out var r) ? r : ModelTokenRates["gpt-4o"];
+        => ModelTokenRates.TryGetValue(deployment, out var r) ? r : ModelTokenRates["gpt-5.5"];
 
     // --- Flat per-unit reference rates (USD) ---
 

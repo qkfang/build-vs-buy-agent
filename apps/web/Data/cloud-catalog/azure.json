@@ -14,7 +14,7 @@
     "key": "ai.llm",
     "category": "AI",
     "service": "Microsoft Foundry (Azure OpenAI)",
-    "sku": "gpt-4o",
+    "sku": "gpt-5.5",
     "unit": "per 1K tokens",
     "pricingUrl": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/",
     "pricingLabel": "Azure OpenAI pricing",

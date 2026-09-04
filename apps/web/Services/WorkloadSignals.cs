@@ -28,7 +28,7 @@ public sealed partial class WorkloadSignals
     // Derived sizing
     public string RecommendedAppServiceSku => ScaleBand switch { >= 3 => "P2v3", 2 => "P1v3", _ => "B2" };
     public int AppServiceInstances => ScaleBand switch { >= 3 => 3, 2 => 2, _ => 1 };
-    public string PreferredModel { get; private set; } = "gpt-4o";
+    public string PreferredModel { get; private set; } = "gpt-5.5";
 
     public int MonthlyAiRequests => ScaleBand switch { >= 3 => 200_000, 2 => 40_000, _ => 5_000 };
     public int AvgInputTokens => HasFileSearch ? 4_000 : 1_500;
@@ -98,13 +98,8 @@ public sealed partial class WorkloadSignals
         s.MentionsPii = Has("pii", "personal data", "personally identifiable", "gdpr", "customer data", "sensitive");
         s.MentionsRegulated = Has("hipaa", "pci", "regulated", "compliance", "soc 2", "soc2", "iso 27001", "phi", "financial data");
 
-        // Model preference
-        if (Has("gpt-5", "gpt5", "flagship", "advanced reasoning", "complex reasoning"))
-            s.PreferredModel = "gpt-5.4";
-        else if (Has("cheap", "low cost", "cost-effective", "mini", "lightweight"))
-            s.PreferredModel = "gpt-4o-mini";
-        else
-            s.PreferredModel = "gpt-4o";
+        // Model preference: gpt-5.5 is the only supported deployment.
+        s.PreferredModel = "gpt-5.5";
 
         return s;
     }

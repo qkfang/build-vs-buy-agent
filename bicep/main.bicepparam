@@ -9,9 +9,9 @@ param location = 'australiaeast'
 // App Service plan SKU. P0v3 is a cost-effective production-class tier for a POC.
 param appServiceSku = 'P0v3'
 
-// Model deployment for the prompt agent. Use a smaller model when gpt-4o quota is exhausted.
-param modelDeploymentName = 'gpt-4o-mini'
-param modelName = 'gpt-4o-mini'
+// Model deployment for the prompt agent.
+param modelDeploymentName = 'gpt-5.5'
+param modelName = 'gpt-5.5'
 param modelVersion = '2024-07-18'
 
 param containerName = 'estimations'

@@ -8,10 +8,10 @@ param foundryServicesName string
 param foundryProjectName string
 
 @description('Model deployment name used by the cost-estimator prompt agent')
-param modelDeploymentName string = 'gpt-4o-mini'
+param modelDeploymentName string = 'gpt-5.5'
 
 @description('Model name to deploy')
-param modelName string = 'gpt-4o-mini'
+param modelName string = 'gpt-5.5'
 
 @description('Model version to deploy')
 param modelVersion string = '2024-07-18'

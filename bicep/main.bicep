@@ -18,10 +18,10 @@ param baseName string = 'bvb'
 param appServiceSku string = 'P0v3'
 
 @description('Model deployment name for the prompt agent')
-param modelDeploymentName string = 'gpt-4o'
+param modelDeploymentName string = 'gpt-5.5'
 
 @description('Model name')
-param modelName string = 'gpt-4o'
+param modelName string = 'gpt-5.5'
 
 @description('Model version')
 param modelVersion string = '2024-11-20'

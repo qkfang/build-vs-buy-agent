@@ -86,7 +86,7 @@ Set these (env vars or `appsettings`) and sign in with a credential that has the
 | Setting | Example |
 | --- | --- |
 | `Foundry__ProjectEndpoint` | `https://<name>.services.ai.azure.com/api/projects/<project>` |
-| `Foundry__ModelDeploymentName` | `gpt-4o` |
+| `Foundry__ModelDeploymentName` | `gpt-5.5` |
 
 On Azure these are wired automatically by the Bicep `appservice` module, and the web app's managed
 identity is granted **Cognitive Services User / OpenAI User**, **Storage Blob Data Contributor**, and
