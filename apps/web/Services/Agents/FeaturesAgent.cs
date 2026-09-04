@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -8,8 +9,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class FeaturesAgent : BaseFoundryAgent
 {
-    public FeaturesAgent(FoundryOptions options, ILogger<FeaturesAgent> logger)
-        : base(options, logger, AgentInstructions.Features)
+    public FeaturesAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<FeaturesAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.Features)
     {
     }
 
@@ -17,7 +18,7 @@ public sealed class FeaturesAgent : BaseFoundryAgent
 
     public async Task<FeatureSet> RunAsync(string corpus, ScopeSummary scope, List<TechnicalRequirement> requirements, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var wrapper = await RunJsonAsync<FeaturesWrapper>(agent, FeaturesPrompt(corpus, scope, requirements), ct);
         if (wrapper is null)
             throw new InvalidOperationException("Features step returned no JSON.");

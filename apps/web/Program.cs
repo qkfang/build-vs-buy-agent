@@ -28,6 +28,7 @@ builder.Services.AddSingleton<CloudCatalogService>(sp => new CloudCatalogService
 builder.Services.AddSingleton<OfflineEstimationEngine>();
 builder.Services.AddSingleton<SampleRequirementsService>();
 builder.Services.AddSingleton<VendorDocsService>();
+builder.Services.AddSingleton<FoundryAgentProvisioner>();
 builder.Services.AddSingleton<ScopeAgent>();
 builder.Services.AddSingleton<RequirementsAgent>();
 builder.Services.AddSingleton<FeaturesAgent>();
@@ -55,6 +56,13 @@ builder.Services.AddSingleton<IEstimationEngine>(sp =>
 });
 
 builder.Services.AddSingleton<EstimationJobService>();
+
+// Create/refresh the persistent Foundry agents in the project at startup so every step has a real,
+// named agent to call (and so they are visible in the Foundry portal before the first request).
+if (foundryOptions.IsConfigured)
+{
+    builder.Services.AddHostedService<FoundryAgentBootstrapper>();
+}
 
 builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
@@ -85,11 +93,12 @@ app.MapRazorPages();
 
 var api = app.MapGroup("/api").WithTags("Estimation");
 
-api.MapGet("/health", () => Results.Ok(new
+api.MapGet("/health", (FoundryAgentProvisioner provisioner) => Results.Ok(new
 {
     status = "healthy",
     engine = foundryOptions.IsConfigured ? "foundry" : "offline",
     foundryConfigured = foundryOptions.IsConfigured,
+    foundryAgents = provisioner.ProvisionedAgentNames,
     region = AzurePricingCatalog.Region,
     time = DateTimeOffset.UtcNow
 }))

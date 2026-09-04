@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\apps\web\Proj37.CostEstimator.Web.csproj" />
+    <ProjectReference Include="..\apps\web\build_vs_buy.Web.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -9,8 +10,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class BuyOperationCostAgent : BaseFoundryAgent
 {
-    public BuyOperationCostAgent(FoundryOptions options, ILogger<BuyOperationCostAgent> logger)
-        : base(options, logger, AgentInstructions.BuyOperations)
+    public BuyOperationCostAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<BuyOperationCostAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.BuyOperations)
     {
     }
 
@@ -18,7 +19,7 @@ public sealed class BuyOperationCostAgent : BaseFoundryAgent
 
     public async Task<OperationCost> RunAsync(string buyCorpus, BuySpecSummary? spec, ScopeSummary? scope, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var plan = await RunJsonAsync<BuyOperationsPlan>(agent, OperationsPrompt(buyCorpus, spec, scope), ct);
         if (plan is null)
             throw new InvalidOperationException("Operation Cost (Buy) step returned no JSON.");

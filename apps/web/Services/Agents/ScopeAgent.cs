@@ -1,4 +1,5 @@
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -7,8 +8,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class ScopeAgent : BaseFoundryAgent
 {
-    public ScopeAgent(FoundryOptions options, ILogger<ScopeAgent> logger)
-        : base(options, logger, AgentInstructions.Scope)
+    public ScopeAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<ScopeAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.Scope)
     {
     }
 
@@ -16,7 +17,7 @@ public sealed class ScopeAgent : BaseFoundryAgent
 
     public async Task<ScopeSummary?> RunAsync(string corpus, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var scope = await RunJsonAsync<ScopeSummary>(agent, ScopePrompt(corpus), ct);
         if (scope is null)
             throw new InvalidOperationException("Scope step returned no JSON.");

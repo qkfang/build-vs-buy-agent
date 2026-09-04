@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -8,8 +9,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class CompareAgent : BaseFoundryAgent
 {
-    public CompareAgent(FoundryOptions options, ILogger<CompareAgent> logger)
-        : base(options, logger, AgentInstructions.Compare)
+    public CompareAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<CompareAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.Compare)
     {
     }
 
@@ -17,7 +18,7 @@ public sealed class CompareAgent : BaseFoundryAgent
 
     public async Task<CostComparison> RunAsync(EstimationResult job, CostComparison comparison, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var narrative = await RunJsonAsync<AgentNarrative>(agent, ComparePrompt(job, comparison), ct);
         if (narrative is null)
             throw new InvalidOperationException("Compare step returned no JSON.");

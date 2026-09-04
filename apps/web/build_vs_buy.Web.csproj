@@ -13,8 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Microsoft Foundry / Microsoft Agent Framework (hosted, in-process agent pattern).
-         AsAIAgent(...) on AIProjectClient creates an ephemeral Responses-API agent. -->
+    <!-- Microsoft Foundry / Microsoft Agent Framework. Agents are registered as persistent prompt
+         agents in the Foundry project via AgentAdministrationClient, then bound with AsAIAgent(version). -->
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Microsoft.Agents.AI.Foundry" Version="1.5.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.5.0" />

@@ -2,7 +2,9 @@ using Xunit;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace Proj37.CostEstimator.Tests;
 
@@ -10,11 +12,22 @@ namespace Proj37.CostEstimator.Tests;
 /// End-to-end API tests via WebApplicationFactory. Foundry is unconfigured in test, so the
 /// deterministic offline engine runs — exercising the full ingest -> estimate -> Excel pipeline.
 /// </summary>
-public class ApiEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class ApiEndpointTests : IClassFixture<ApiEndpointTests.OfflineWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly OfflineWebApplicationFactory _factory;
 
-    public ApiEndpointTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public ApiEndpointTests(OfflineWebApplicationFactory factory) => _factory = factory;
+
+    /// <summary>Forces the offline engine so tests never provision or call live Foundry agents.</summary>
+    public sealed class OfflineWebApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Foundry:ProjectEndpoint"] = string.Empty
+                }));
+    }
 
     [Fact]
     public async Task Health_returns_ok_and_offline_engine()

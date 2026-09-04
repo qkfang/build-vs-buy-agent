@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -10,8 +11,8 @@ public sealed class CostModelAgent : BaseFoundryAgent
 {
     private readonly CloudCatalogService _cloudCatalog;
 
-    public CostModelAgent(FoundryOptions options, ILogger<CostModelAgent> logger, CloudCatalogService? cloudCatalog = null)
-        : base(options, logger, AgentInstructions.Cost)
+    public CostModelAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<CostModelAgent> logger, CloudCatalogService? cloudCatalog = null)
+        : base(options, provisioner, logger, AgentInstructions.Cost)
     {
         _cloudCatalog = cloudCatalog ?? new CloudCatalogService();
     }
@@ -20,7 +21,7 @@ public sealed class CostModelAgent : BaseFoundryAgent
 
     public async Task<CostEstimate> RunAsync(string corpus, ScopeSummary scope, string cloudProvider, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var provider = CloudCatalogService.NormalizeProvider(cloudProvider);
         var plan = await RunJsonAsync<ServicePlan>(agent, ServicePlanPrompt(corpus, scope, provider), ct);
         if (plan is null)

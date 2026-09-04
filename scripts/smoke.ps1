@@ -27,11 +27,11 @@ function Check($name, [scriptblock]$test) {
 }
 
 Write-Host "==> Building..." -ForegroundColor Cyan
-dotnet build (Join-Path $webDir 'Proj37.CostEstimator.Web.csproj') -c Release | Out-Null
+dotnet build (Join-Path $webDir 'build_vs_buy.Web.csproj') -c Release | Out-Null
 
 Write-Host "==> Starting app on $baseUrl ..." -ForegroundColor Cyan
 $proc = Start-Process -FilePath 'dotnet' `
-  -ArgumentList @('run', '-c', 'Release', '--no-build', '--project', (Resolve-Path (Join-Path $webDir 'Proj37.CostEstimator.Web.csproj')).Path) `
+  -ArgumentList @('run', '-c', 'Release', '--no-build', '--project', (Resolve-Path (Join-Path $webDir 'build_vs_buy.Web.csproj')).Path) `
   -PassThru -WindowStyle Hidden -Environment @{ ASPNETCORE_URLS = $baseUrl; ASPNETCORE_ENVIRONMENT = 'Development' }
 
 try {

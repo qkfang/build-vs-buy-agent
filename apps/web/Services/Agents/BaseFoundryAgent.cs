@@ -1,13 +1,12 @@
 using System.Text.Json;
-using Azure.AI.Projects;
-using Azure.Identity;
 using Microsoft.Agents.AI;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
 /// <summary>
-/// Shared base class for the per-step Microsoft Foundry agents. It centralizes agent creation,
+/// Shared base class for the per-step Microsoft Foundry agents. It centralizes agent resolution,
 /// JSON extraction/deserialization, and bounded document-corpus construction so each concrete step
 /// class can stay focused on its own prompt and output normalization.
 /// </summary>
@@ -18,12 +17,16 @@ public abstract class BaseFoundryAgent
         PropertyNameCaseInsensitive = true
     };
 
+    private readonly FoundryAgentProvisioner _provisioner;
+
     protected BaseFoundryAgent(
         FoundryOptions options,
+        FoundryAgentProvisioner provisioner,
         ILogger logger,
         AgentInstructions.StepInstruction stepInstruction)
     {
         Options = options;
+        _provisioner = provisioner;
         Logger = logger;
         StepInstruction = stepInstruction;
         StepKey = stepInstruction.Key;
@@ -44,34 +47,18 @@ public abstract class BaseFoundryAgent
     protected virtual string AgentNameSuffix => $"{StepKey}-agent";
 
     /// <summary>
-    /// System-level instructions passed when creating the in-process Foundry agent.
+    /// System-level instructions published on the persistent Foundry agent for this step.
     /// Concrete steps can override this when they need a different base instruction block.
     /// </summary>
-    protected virtual string AgentInstructionsText => AgentInstructions.SystemPersona;
+    protected virtual string AgentInstructionsText =>
+        $"{AgentInstructions.SystemPersona}\n\n{StepInstruction.Instructions}";
 
-    protected AIAgent CreateAgent()
-    {
-        var credOptions = new DefaultAzureCredentialOptions
-        {
-            ExcludeVisualStudioCredential = true,
-            ExcludeVisualStudioCodeCredential = true,
-            ExcludeAzurePowerShellCredential = true,
-            ExcludeAzureDeveloperCliCredential = true,
-            ExcludeInteractiveBrowserCredential = true,
-        };
+    /// <summary>Resolves the persistent Foundry agent for this step, creating it on first use.</summary>
+    protected Task<AIAgent> GetAgentAsync(CancellationToken ct) =>
+        _provisioner.GetAgentAsync(ResolveAgentName(), AgentInstructionsText, ct);
 
-        if (!string.IsNullOrWhiteSpace(Options.TenantId))
-        {
-            credOptions.TenantId = Options.TenantId;
-        }
-
-        var credential = new DefaultAzureCredential(credOptions);
-        var client = new AIProjectClient(new Uri(Options.ProjectEndpoint!), credential);
-        return client.AsAIAgent(
-            model: Options.ModelDeploymentName,
-            instructions: AgentInstructionsText,
-            name: ResolveAgentName());
-    }
+    /// <summary>Full name of the persistent Foundry agent backing this step.</summary>
+    public string FoundryAgentName => ResolveAgentName();
 
     protected async Task<T?> RunJsonAsync<T>(AIAgent agent, string prompt, CancellationToken ct)
     {
@@ -101,6 +88,9 @@ public abstract class BaseFoundryAgent
         string.IsNullOrWhiteSpace(Options.AgentName)
             ? AgentNameSuffix
             : $"{Options.AgentName}-{AgentNameSuffix}";
+
+    /// <summary>Provisions this step's Foundry agent without running it (startup warm-up).</summary>
+    public Task EnsureAgentAsync(CancellationToken ct) => GetAgentAsync(ct);
 
     private static string? ExtractJsonObject(string text)
     {

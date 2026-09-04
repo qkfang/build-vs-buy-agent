@@ -1,4 +1,5 @@
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -9,8 +10,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class SpecAgent : BaseFoundryAgent
 {
-    public SpecAgent(FoundryOptions options, ILogger<SpecAgent> logger)
-        : base(options, logger, AgentInstructions.Spec)
+    public SpecAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<SpecAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.Spec)
     {
     }
 
@@ -18,7 +19,7 @@ public sealed class SpecAgent : BaseFoundryAgent
 
     public async Task<BuySpecSummary> RunAsync(string buyCorpus, ScopeSummary? scope, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var spec = await RunJsonAsync<BuySpecSummary>(agent, SpecPrompt(buyCorpus, scope), ct);
         if (spec is null)
             throw new InvalidOperationException("Spec step returned no JSON.");

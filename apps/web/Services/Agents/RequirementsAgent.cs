@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Proj37.CostEstimator.Web.Models;
+using Proj37.CostEstimator.Web.Services.Foundry;
 
 namespace Proj37.CostEstimator.Web.Services.Agents;
 
@@ -8,8 +9,8 @@ namespace Proj37.CostEstimator.Web.Services.Agents;
 /// </summary>
 public sealed class RequirementsAgent : BaseFoundryAgent
 {
-    public RequirementsAgent(FoundryOptions options, ILogger<RequirementsAgent> logger)
-        : base(options, logger, AgentInstructions.Requirements)
+    public RequirementsAgent(FoundryOptions options, FoundryAgentProvisioner provisioner, ILogger<RequirementsAgent> logger)
+        : base(options, provisioner, logger, AgentInstructions.Requirements)
     {
     }
 
@@ -17,7 +18,7 @@ public sealed class RequirementsAgent : BaseFoundryAgent
 
     public async Task<List<TechnicalRequirement>> RunAsync(string corpus, ScopeSummary scope, CancellationToken ct)
     {
-        var agent = CreateAgent();
+        var agent = await GetAgentAsync(ct);
         var wrapper = await RunJsonAsync<RequirementsWrapper>(agent, RequirementsPrompt(corpus, scope), ct);
         var requirements = wrapper?.Requirements ?? throw new InvalidOperationException("Requirements step returned no JSON.");
         RenumberRequirements(requirements);
