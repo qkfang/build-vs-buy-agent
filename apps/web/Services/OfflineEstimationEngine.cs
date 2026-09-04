@@ -423,6 +423,17 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
             "End-to-end diagnostics and cost/usage visibility.", "Should");
         Add("Security", $"Classify data as '{s.DescribeDataSensitivity()}' and apply matching access controls and retention.",
             "Compliance alignment proportional to data sensitivity.", "Should");
+        Add("Governance", "Record inputs, sources, model/rule versions, outputs, approvals and overrides for every run.",
+            "Traceability is a mandatory gate — an option that cannot evidence a decision is not viable.", "Must");
+        Add("Governance", "Ensure data, configuration and operations can be exported and transitioned if the product or supplier changes.",
+            "Limits vendor dependency and keeps the exit cost of the sourcing decision bounded.", "Should");
+        if (s.HasAi)
+        {
+            Add("Governance", "Require human approval, rejection, timeout and reversal on high-impact agent actions.",
+                "Accountable humans must retain reserved decisions; agent actions stay compensable.", "Must");
+            Add("Governance", "Evaluate agent quality, safety and drift on a regular cadence and on every model version change.",
+                "Model behaviour changes over time; unmeasured quality is an unmanaged operating risk.", "Should");
+        }
 
         return reqs;
     }

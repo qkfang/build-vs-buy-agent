@@ -1571,6 +1571,7 @@ function renderCompare(cmp) {
     <div class="cmp-recommend ${recClass}">
       <div class="cmp-rec-head"><span class="cmp-rec-badge">Recommendation</span><span class="cmp-rec-value">${esc(recLabel)}</span></div>
       <p class="cmp-rec-summary">${esc(cmp.summary)}</p>
+      ${cmp.primaryPlatform ? `<p class="cmp-rec-summary"><strong>Primary platform:</strong> ${esc(cmp.primaryPlatform)}</p>` : ''}
     </div>
     ${totalsGrid}
     <h3 class="cmp-h">Cost by section</h3>
@@ -1578,9 +1579,80 @@ function renderCompare(cmp) {
       <th>Section</th><th>Type</th><th class="num-col">Build (${esc(ccy)})</th>
       <th class="num-col">Buy (${esc(ccy)})</th><th class="num-col">Buy − Build</th><th>Cheaper</th></tr></thead>
       <tbody>${rows}</tbody></table>
+    ${renderGates(cmp.gates)}
+    ${renderCommercialDrivers(cmp.commercialDrivers)}
+    ${renderSourcing(cmp.sourcing, cmp.sharedControls)}
     <h3 class="cmp-h">Reasoning</h3>
     ${reasoning}
     <p class="muted" style="margin-top:.7rem">${(cmp.notes || []).map(esc).join(' · ')}</p>`;
+}
+
+const GATE_PILL = { pass: 'ok', conditional: 'Should', fail: 'Must', unknown: 'neutral' };
+const RATING_PILL = { VH: 'Must', 'H-VH': 'Must', H: 'Must', 'M-H': 'Should', M: 'Should', 'L-M': 'Could', L: 'Could' };
+
+function gatePill(status) {
+  const key = (status || 'unknown').toLowerCase();
+  return `<span class="pill ${GATE_PILL[key] || 'neutral'}">${esc(key)}</span>`;
+}
+
+function ratingPill(rating) {
+  const key = (rating || '').toUpperCase();
+  return `<span class="pill ${RATING_PILL[key] || 'neutral'}">${esc(rating || '—')}</span>`;
+}
+
+function renderGates(gates) {
+  if (!gates || !gates.length) return '';
+  const rows = gates.map(g => `
+    <tr>
+      <td>${esc(g.gate)}${g.note ? `<div class="muted cmp-detail">${esc(g.note)}</div>` : ''}</td>
+      <td>${gatePill(g.buildStatus)}</td>
+      <td>${gatePill(g.buyStatus)}</td>
+    </tr>`).join('');
+  return `
+    <h3 class="cmp-h">Mandatory gates</h3>
+    <p class="hint">Only options that clear every gate should proceed on cost. A gate marked <em>unknown</em> needs evidence, not an assumption.</p>
+    <table class="cmp-table"><thead><tr><th>Gate</th><th>Build</th><th>Buy</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderCommercialDrivers(drivers) {
+  if (!drivers || !drivers.length) return '';
+  const rows = drivers.map(d => `
+    <tr>
+      <td>${esc(d.driver)}${d.rationale ? `<div class="muted cmp-detail">${esc(d.rationale)}</div>` : ''}</td>
+      <td>${ratingPill(d.buildRating)}</td>
+      <td>${ratingPill(d.buyRating)}</td>
+      <td class="muted cmp-detail">${esc(d.sensitivity || '')}</td>
+    </tr>`).join('');
+  return `
+    <h3 class="cmp-h">Three-year commercial drivers</h3>
+    <p class="hint">Relative ratings (VH / H / M / L), not speculative dollar values — starting hypotheses to recalibrate against real volumes, existing licences, labour rates and supplier terms.</p>
+    <table class="cmp-table"><thead><tr>
+      <th>Driver</th><th>Build</th><th>Buy</th><th>Changes the rating if…</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+}
+
+function renderSourcing(sourcing, sharedControls) {
+  const hasSourcing = sourcing && sourcing.length;
+  const hasControls = sharedControls && sharedControls.length;
+  if (!hasSourcing && !hasControls) return '';
+
+  const sourcingBlock = hasSourcing
+    ? `<table class="cmp-table"><thead><tr><th>Capability</th><th>Choice</th><th>Rationale</th></tr></thead>
+        <tbody>${sourcing.map(s => `
+          <tr><td>${esc(s.capability)}</td><td><strong>${esc(s.choice)}</strong></td>
+          <td class="muted cmp-detail">${esc(s.rationale || '')}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted">Per-capability sourcing choices are produced by the Compare agent; run with Foundry configured to populate them.</p>';
+
+  const controlsBlock = hasControls
+    ? `<h3 class="cmp-h">Controls to share enterprise-wide</h3>
+       <ul class="tight">${sharedControls.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : '';
+
+  return `
+    <h3 class="cmp-h">Capability sourcing</h3>
+    <p class="hint">The decision is not binary. Each capability is sourced as Reuse, Buy, Configure, Extend or Build — most sound answers are a mix.</p>
+    ${sourcingBlock}
+    ${controlsBlock}`;
 }
 
 // ================================================================ ESTIMATIONS page

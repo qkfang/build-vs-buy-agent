@@ -188,6 +188,8 @@ tr:nth-child(even) td { background: #fafbfd; }
 .pill.Must { background: #fce8e6; color: #c5221f; }
 .pill.Should { background: #fef7e0; color: var(--warn); }
 .pill.Could { background: #e8f0fe; color: var(--brand-2); }
+.pill.ok { background: #e6f4ea; color: var(--ok); }
+.pill.neutral { background: #eef1f6; color: var(--muted); }
 .kv { display: grid; grid-template-columns: 150px 1fr; gap: .3rem .7rem; }
 .kv dt { font-weight: 600; color: var(--muted); }
 .kv dd { margin: 0; }

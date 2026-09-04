@@ -3,9 +3,16 @@ name: 20 App Deploy
 # Builds, publishes, and zip-deploys the proj37 .NET web app to its Azure App Service.
 # Run proj37_foundry_cost_estimator_infra first so the Web App exists.
 #
-# Manual trigger. Requires the AZURE_CREDENTIALS secret.
+# Runs automatically when the app source changes on main, and on manual trigger.
+# Requires the AZURE_CREDENTIALS secret.
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/web/**"
+      - ".github/workflows/20_App_deploy.yml"
   workflow_dispatch:
     inputs:
       baseName:
@@ -16,10 +23,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: app-deploy
+  cancel-in-progress: true
+
 env:
   RESOURCE_GROUP: rg-bvb
   DOTNET_VERSION: "10.0.x"
   APP_PROJECT: apps/web/build_vs_buy.Web.csproj
+  BASE_NAME: ${{ inputs.baseName || 'bvb' }}
 
 jobs:
   deploy:
@@ -57,9 +69,9 @@ jobs:
           inlineScript: |
             set -euo pipefail
             WEBAPP=$(az webapp list -g "$RESOURCE_GROUP" \
-              --query "[?starts_with(name,'${{ inputs.baseName }}-web-')].name | [0]" -o tsv)
+              --query "[?starts_with(name,'$BASE_NAME-web-')].name | [0]" -o tsv)
             if [ -z "$WEBAPP" ]; then
-              echo "No Web App found for baseName=${{ inputs.baseName }} in $RESOURCE_GROUP."
+              echo "No Web App found for baseName=$BASE_NAME in $RESOURCE_GROUP."
               echo "Run proj37_foundry_cost_estimator_infra first."; exit 1
             fi
             echo "webApp=$WEBAPP" >> "$GITHUB_OUTPUT"

@@ -4,10 +4,17 @@ name: 10 Infra Deploy
 # App Service (Linux, .NET 10), Microsoft Foundry (AI Services account + project + model deployment),
 # Storage, Key Vault, Log Analytics / App Insights, and the managed-identity RBAC assignments.
 #
-# Manual trigger (matches the rest of this repo). Requires the AZURE_CREDENTIALS secret
+# Runs automatically when the infrastructure definition changes on main, and on manual trigger.
+# Requires the AZURE_CREDENTIALS secret
 # (a service principal with Contributor + User Access Administrator on the resource group).
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "bicep/**"
+      - ".github/workflows/10_infra_deploy.yml"
   workflow_dispatch:
     inputs:
       baseName:
@@ -19,11 +26,17 @@ on:
         required: true
         default: "australiaeast"
 
+concurrency:
+  group: infra-deploy
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
 env:
   RESOURCE_GROUP: rg-bvb
+  BASE_NAME: ${{ inputs.baseName || 'bvb' }}
+  LOCATION: ${{ inputs.location || 'australiaeast' }}
 
 jobs:
   infra:
@@ -47,7 +60,7 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               --template-file bicep/main.bicep \
               --parameters bicep/main.bicepparam \
-              --parameters baseName='${{ inputs.baseName }}' location='${{ inputs.location }}' \
+              --parameters baseName="$BASE_NAME" location="$LOCATION" \
               || echo "what-if returned non-zero (often informational); continuing to deploy."
 
       - name: Deploy Bicep
@@ -61,7 +74,7 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               --template-file bicep/main.bicep \
               --parameters bicep/main.bicepparam \
-              --parameters baseName='${{ inputs.baseName }}' location='${{ inputs.location }}' \
+              --parameters baseName="$BASE_NAME" location="$LOCATION" \
               --query "properties.outputs" -o json | tee outputs.json
 
       - name: Show outputs

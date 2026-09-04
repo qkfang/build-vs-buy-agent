@@ -146,7 +146,44 @@ public sealed partial class CostComparisonService
             BuyAnnualRecurring = Math.Round(buyLicensingAnnual + buySupportAnnual, 2)
         };
 
+        SeedDecisionFramework(cmp);
+
         return cmp;
+    }
+
+    /// <summary>
+    /// Seeds the mandatory gates and the relative three-year commercial-driver profile so the decision
+    /// framework is always present. The Compare agent overwrites these with reasoned values when it runs;
+    /// offline they stand as the starting hypotheses to be recalibrated.
+    /// </summary>
+    private static void SeedDecisionFramework(CostComparison cmp)
+    {
+        cmp.Gates = BuildVsBuyFramework.MandatoryGates
+            .Select(gate => new MandatoryGateCheck { Gate = gate })
+            .ToList();
+
+        cmp.CommercialDrivers = BuildVsBuyFramework.CommercialDrivers
+            .Select(d => new CommercialDriverRating
+            {
+                Driver = d.Driver,
+                BuildRating = d.BuildRating,
+                BuyRating = d.BuyRating,
+                Rationale = "Starting hypothesis for an Azure-anchored build versus a packaged vendor product.",
+                Sensitivity = "Recalibrate against actual volumes, existing licences, cloud commitments, internal labour rates, supplier terms and support expectations."
+            })
+            .ToList();
+
+        cmp.SharedControls =
+        [
+            "Identity and source-system permission enforcement across every agent and tool call",
+            "Audit and end-to-end traceability of inputs, sources, versions, outputs, approvals and overrides",
+            "Quality, safety and drift evaluation for AI-assisted decisions",
+            "Data handling, residency, retention, deletion and legal hold",
+            "Human approval, rejection and reversal workflow for high-impact actions"
+        ];
+
+        cmp.Notes.Add("Mandatory gates are assessed before cost: an option that fails a gate is not viable regardless of price.");
+        cmp.Notes.Add("Commercial driver ratings are relative starting hypotheses (VH/H/M/L), not supplier conclusions.");
     }
 
     private static decimal Money2(decimal amount) => Math.Round(amount, 2);
@@ -343,7 +380,28 @@ public sealed partial class CostComparisonService
         c.Reasoning.Add($"Ongoing annual run cost — Build {Money(t.BuildAnnualRecurring)} vs Buy {Money(t.BuyAnnualRecurring)}.");
         c.Reasoning.Add($"One-time cost — Build {Money(t.BuildOneTime)} vs Buy {Money(t.BuyOneTime)}.");
         c.Reasoning.Add($"3-year total cost of ownership — Build {Money(buildTco)} vs Buy {Money(buyTco)}.");
+        c.Reasoning.Add(DescribeBreakEven(t));
+        c.Reasoning.Add("Sensitivities to test before committing: volume growth against the licensing basis, supplier price escalation, contingency, and the cost of exit if the supplier or product changes.");
         c.Reasoning.Add("Non-cost factors to weigh: building maximises control and customisation; buying accelerates time-to-value but adds vendor lock-in and per-seat/volume price growth.");
+    }
+
+    /// <summary>
+    /// The year at which cumulative Build cost crosses cumulative Buy cost — the single most useful
+    /// sensitivity for a three-year decision, since a one-time build only repays over time.
+    /// </summary>
+    private static string DescribeBreakEven(ComparisonTotals t)
+    {
+        var recurringGap = t.BuyAnnualRecurring - t.BuildAnnualRecurring;   // Build's annual advantage
+        var oneTimeGap = t.BuildOneTime - t.BuyOneTime;                     // Build's up-front penalty
+
+        if (recurringGap <= 0)
+            return "Break-even — building never repays its up-front cost at these figures, because its annual run cost is not lower than buying.";
+
+        if (oneTimeGap <= 0)
+            return "Break-even — building is cheaper both up-front and annually, so it leads from year 1.";
+
+        var years = oneTimeGap / recurringGap;
+        return $"Break-even — building repays its {Money(oneTimeGap)} up-front premium after about {years:N1} year(s) at {Money(recurringGap)}/yr of lower run cost; the recommendation flips if the horizon is shorter.";
     }
 
     private static string Money(decimal amount) =>
