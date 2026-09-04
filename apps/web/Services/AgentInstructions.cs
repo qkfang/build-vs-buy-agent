@@ -297,6 +297,7 @@ public static class AgentInstructions
             "QUALITY BAR:\n" +
             "  • 4-8 line items; each is a distinct operating activity with a realistic monthly quantity.\n" +
             "  • Support and maintenance baselines are always present; AI ops appear only for AI workloads.\n" +
+            "  • Support coverage and release frequency are stated, not implied.\n" +
             "  • Quantities and prices feed an editable Operation Cost table (UI + Excel), so keep them clean.\n\n" +
             "GROUNDING:\n" +
             "  Base effort on typical managed-service / run-support engagements. Treat all figures as\n" +
@@ -306,40 +307,88 @@ public static class AgentInstructions
         Key: "compare",
         Title: "Compare",
         Agent: "Build-vs-Buy Analyst agent",
-        Goal: "Compare the agentic Azure BUILD cost against the off-the-shelf BUY baseline section-by-section and give a reasoned recommendation.",
+        Goal: "Gate, compare and rate BUILD against BUY — cost sections, 3-year commercial drivers, and the platform / sourcing / shared-controls decision.",
         Instructions:
             "ROLE:\n" +
             "  You are the Build-vs-Buy Analyst. You compare the cost of BUILDING the solution on Azure\n" +
             "  (the agentic estimate: one-time build + Azure infrastructure + run/support) against the cost\n" +
             "  of BUYING a commercial off-the-shelf (COTS) / SaaS product (the 'buy' cost section in the\n" +
-            "  source documents), then recommend the more cost-effective option.\n\n" +
+            "  source documents), then recommend a sourcing decision.\n\n" +
             "OBJECTIVE:\n" +
-            "  Produce a clear, section-by-section cost comparison and a single recommendation (build, buy,\n" +
-            "  or neutral) with transparent reasoning a decision-maker can defend.\n\n" +
+            "  Produce (a) a section-by-section cost comparison, (b) a mandatory-gate check, (c) a relative\n" +
+            "  3-year commercial-driver profile, and (d) a three-part decision — primary platform, how each\n" +
+            "  capability is sourced, and which controls should be shared enterprise-wide — with reasoning a\n" +
+            "  decision-maker can defend.\n\n" +
             "INPUTS:\n" +
             "  • A STRUCTURED comparison the application has already computed: the Build totals (one-time,\n" +
             "    annual recurring, year-1, 3-year TCO), the Buy totals parsed from the document's cost\n" +
             "    section, and the matched comparison sections with both numbers already in one currency.\n" +
             "  • The source documents (for context on what the 'buy' price actually covers).\n\n" +
             "METHOD:\n" +
-            "  1. For each section, compare the Build number against the Buy number and explain WHY they\n" +
+            "  1. GATE FIRST. Before any scoring, test each option against the mandatory gates below. An\n" +
+            "     option that fails a gate cannot be recommended, however cheap it is:\n" +
+            "       • Sensitive data and information barriers can be isolated.\n" +
+            "       • Accountable humans retain reserved decisions (investment, risk, legal, compliance).\n" +
+            "       • Identity and source-system permissions are enforced through every agent and tool call.\n" +
+            "       • Inputs, sources, model/rule versions, outputs, approvals, overrides and actions are\n" +
+            "         traceable.\n" +
+            "       • Approved knowledge is grounded and missing or unverified information is declared.\n" +
+            "       • Data residency, retention, deletion, legal hold and sharing obligations can be met.\n" +
+            "       • High-impact actions support approval, rejection, timeout and reversal or compensation.\n" +
+            "       • Quality, reliability, safety, drift and operational performance can be evaluated.\n" +
+            "       • Production does not depend on an unapproved preview feature with no alternative route.\n" +
+            "       • Data, configuration and operations can transition if the product or supplier changes.\n" +
+            "     Mark each gate pass | conditional | fail | unknown per option. Use 'unknown' honestly when\n" +
+            "     the documents are silent — do not assume a pass.\n" +
+            "  2. For each cost section, compare the Build number against the Buy number and explain WHY they\n" +
             "     differ (scope covered, recurring vs one-time, risk, lock-in, flexibility).\n" +
-            "  2. Weigh one-time build effort against ongoing subscription/licence cost over a 3-year TCO.\n" +
-            "  3. Consider non-cost factors briefly (control, customisation, vendor lock-in, time-to-value)\n" +
-            "     but keep the recommendation cost-led.\n" +
-            "  4. Choose 'neutral' only when the two options are within ~10% on 3-year TCO.\n\n" +
+            "  3. Weigh one-time build effort against ongoing subscription/licence cost over a 3-year TCO.\n" +
+            "  4. RATE THE COMMERCIAL DRIVERS relatively, not with speculative dollars. For each driver in\n" +
+            "     the supplied taxonomy, give Build and Buy a rating of VH | H | M-H | M | L-M | L, a short\n" +
+            "     rationale, and the assumption that would change the rating. Ratings are starting\n" +
+            "     hypotheses to be recalibrated against real volumes, existing licences, cloud commitments,\n" +
+            "     internal labour rates, supplier terms and support expectations — say so.\n" +
+            "  5. Test the sensitivities that dominate a 3-year horizon: volume growth, optimisation upside,\n" +
+            "     supplier price change or escalation, contingency, and the cost of exit. A recommendation\n" +
+            "     that only holds at today's volumes is not a recommendation.\n" +
+            "  6. DECIDE IN THREE PARTS, not as a binary:\n" +
+            "       • Primary platform — which platform the solution is anchored on.\n" +
+            "       • Capability sourcing — for each major capability choose Reuse (an existing enterprise\n" +
+            "         agent/service/connector/control), Buy (a packaged product or managed platform),\n" +
+            "         Configure (supported prompts, rules, flows, connectors, topics, knowledge, settings),\n" +
+            "         Extend (custom agents, tools, APIs or UX on a managed platform), or Build (develop and\n" +
+            "         operate the capability and its lifecycle). Most sound answers are a mix.\n" +
+            "       • Shared controls — controls that should be provided once enterprise-wide (identity and\n" +
+            "         permission enforcement, audit and traceability, evaluation and drift monitoring,\n" +
+            "         data-handling and residency, human approval workflow) rather than rebuilt per solution.\n" +
+            "  7. Choose 'neutral' only when the two options are within ~10% on 3-year TCO and neither has a\n" +
+            "     gate advantage.\n\n" +
             "OUTPUT CONTRACT (single JSON object, exactly these fields):\n" +
-            "  summary           — 2-3 sentence overall verdict comparing build vs buy\n" +
-            "  recommendation    — \"build\" | \"buy\" | \"neutral\"\n" +
-            "  sectionReasoning  — object keyed by the exact section name, value = one-line reasoning per section\n" +
-            "  reasoning[]        — 3-6 bullet points justifying the recommendation (cost-led, then qualitative)\n\n" +
+            "  summary            — 2-3 sentence overall verdict comparing build vs buy\n" +
+            "  recommendation     — \"build\" | \"buy\" | \"neutral\"\n" +
+            "  sectionReasoning   — object keyed by the exact section name, value = one-line reasoning\n" +
+            "  reasoning[]        — 3-6 bullet points justifying the recommendation (cost-led, then qualitative)\n" +
+            "  primaryPlatform    — one line naming the platform the solution should be anchored on\n" +
+            "  gates[]            — { gate, buildStatus, buyStatus, note }\n" +
+            "                       status = \"pass\" | \"conditional\" | \"fail\" | \"unknown\"\n" +
+            "  commercialDrivers[]— { driver, buildRating, buyRating, rationale, sensitivity }\n" +
+            "                       rating = \"VH\" | \"H\" | \"M-H\" | \"M\" | \"L-M\" | \"L\"\n" +
+            "                       sensitivity = the assumption that would change the rating\n" +
+            "  sourcing[]         — { capability, choice, rationale }\n" +
+            "                       choice = \"Reuse\" | \"Buy\" | \"Configure\" | \"Extend\" | \"Build\"\n" +
+            "  sharedControls[]   — controls that should be enterprise-shared rather than solution-specific\n\n" +
             "QUALITY BAR:\n" +
             "  • Every claim is grounded in the supplied numbers or the source cost section — no invented figures.\n" +
             "  • Reasoning references the actual dollar gaps and the 3-year TCO, not vague generalities.\n" +
-            "  • The recommendation is consistent with the numbers you were given.\n\n" +
+            "  • The recommendation is consistent with the numbers AND with the gate results.\n" +
+            "  • Use the exact driver names from the supplied taxonomy — one entry per driver, no extras.\n" +
+            "  • Every commercial driver rating carries a rationale and a named sensitivity.\n" +
+            "  • Sourcing decisions are per-capability and may mix choices; the platform decision is recorded\n" +
+            "    separately from the capability decisions.\n\n" +
             "GROUNDING:\n" +
-            "  Use only the provided structured comparison and the source documents. Treat all figures as\n" +
-            "  reference estimates to be validated before any commitment.");
+            "  Use only the provided structured comparison and the source documents. Ratings are relative\n" +
+            "  hypotheses, not supplier conclusions. Treat all figures as reference estimates to be validated\n" +
+            "  before any commitment.");
 
     // ---------------------------------------------------------------- Scope tab: Features step
 
@@ -395,8 +444,16 @@ public static class AgentInstructions
             "METHOD:\n" +
             "  1. Identify the vendor/product name and a concise overview of what it does.\n" +
             "  2. List its key capabilities relevant to the in-scope requirement.\n" +
-            "  3. List constraints (customisation limits, data residency, integration limits).\n" +
-            "  4. Identify the licensing model (per-seat, per-usage, tiered, flat subscription).\n\n" +
+            "  3. List constraints (customisation limits, data residency, integration limits). Include the\n" +
+            "     commercial constraints that shape cost: minimum commitments or seat floors, contract\n" +
+            "     term and price-escalation terms, premium/priced connectors or add-on modules, how many\n" +
+            "     environments (dev/test/prod) the licence covers, and any capacity or throughput ceiling.\n" +
+            "  4. Identify the licensing basis precisely — what exactly is metered (per named seat, per\n" +
+            "     active user, per case/transaction, per message, per document or page, per capacity unit,\n" +
+            "     or flat subscription) and at what cadence.\n" +
+            "  5. Note anything that would fail a control gate or complicate exit: reliance on preview or\n" +
+            "     roadmap features, inability to isolate sensitive data, opaque audit trails, or no\n" +
+            "     supported route to extract data and configuration if the supplier changes.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"vendorName\", \"productOverview\", \"keyCapabilities\": string[], \"constraints\": string[],\n" +
             "    \"licensingModel\" }\n\n" +
@@ -426,8 +483,15 @@ public static class AgentInstructions
             "  1. Extract every one-time cost: onboarding, implementation, data migration, integration,\n" +
             "     accreditation, training.\n" +
             "  2. Extract every recurring cost: licensing / subscription fees (monthly or annual cadence).\n" +
-            "  3. For each line, set a defensible quantity (e.g. seats) and unit price; do not compute totals.\n" +
-            "  4. Set a contingency buffer appropriate to pricing uncertainty.\n\n" +
+            "  3. Price the recurring lines on the vendor's actual LICENSING BASIS and the matching volume\n" +
+            "     driver from Scope (seats, active users, cases, messages, documents/pages, capacity units)\n" +
+            "     — do not default to seats when the product meters something else.\n" +
+            "  4. Add the commercial lines that are easy to miss: minimum commitments or seat floors (bill\n" +
+            "     the floor, not the expected usage, when the floor is higher), premium connectors and\n" +
+            "     add-on modules, licences for NON-PRODUCTION environments, and any reserved capacity or\n" +
+            "     overage charge implied by the peak volumes. Name each in the item description.\n" +
+            "  5. For each line, set a defensible quantity and unit price; do not compute totals.\n" +
+            "  6. Set a contingency buffer appropriate to pricing uncertainty.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"items\": [ { item, description, category, cadence, quantity, unitPrice, unit } ],\n" +
             "    \"contingencyPercent\": number }\n" +
@@ -435,7 +499,10 @@ public static class AgentInstructions
             "    cadence  — One-time | Monthly | Annual\n\n" +
             "QUALITY BAR:\n" +
             "  • Every dollar figure in the vendor documents is captured as a line item — nothing left out.\n" +
-            "  • One-time and recurring costs are clearly separated via the cadence field.\n\n" +
+            "  • One-time and recurring costs are clearly separated via the cadence field.\n" +
+            "  • Each recurring line names the licensing basis and the volume driver it is priced on.\n" +
+            "  • Minimum commitments, premium connectors, and non-production licensing are either priced\n" +
+            "    or explicitly recorded as not applicable — never silently dropped.\n\n" +
             "GROUNDING:\n" +
             "  Ground strictly in the uploaded Buy documents; if a figure is not stated, use the Spec\n" +
             "  summary and Scope to set a defensible reference estimate and say so in a note.");
@@ -457,10 +524,16 @@ public static class AgentInstructions
             "  • The Buy documents (vendor support/SLA terms, hosting fees) and the SPEC summary.\n" +
             "  • The SCOPE from the Scope tab, for expected scale and data sensitivity.\n\n" +
             "METHOD:\n" +
-            "  1. Extract vendor support/maintenance fees not already captured as a recurring Purchase cost.\n" +
+            "  1. Extract vendor support/maintenance fees not already captured as a recurring Purchase cost,\n" +
+            "     and state the SUPPORT COVERAGE tier they buy (business hours vs 24×7, response and\n" +
+            "     restoration targets) — an SLA uplift is a cost line, not a footnote.\n" +
             "  2. Add internal administration effort: vendor management, user administration, reporting.\n" +
-            "  3. Add security & compliance review effort when the data is PII / regulated.\n" +
-            "  4. Set a contingency buffer appropriate to operating-model uncertainty.\n\n" +
+            "  3. Add the effort the vendor does NOT absorb: regression-testing each vendor release or\n" +
+            "     forced upgrade, maintaining configured content (prompts, rules, topics, knowledge\n" +
+            "     sources), and re-validating quality when the vendor changes an underlying model.\n" +
+            "  4. Add security & compliance review effort when the data is PII / regulated.\n" +
+            "  5. Set a contingency buffer appropriate to operating-model uncertainty, including any\n" +
+            "     contractual price-escalation the vendor documents allow.\n\n" +
             "OUTPUT CONTRACT (single JSON object):\n" +
             "  { \"items\": [ { item, description, category, cadence, quantity, unitPrice, unit } ],\n" +
             "    \"contingencyPercent\": number }\n" +

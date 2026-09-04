@@ -36,6 +36,21 @@ public sealed class CompareAgent : BaseFoundryAgent
         if (narrative.Reasoning is { Count: > 0 })
             comparison.Reasoning = narrative.Reasoning;
 
+        if (!string.IsNullOrWhiteSpace(narrative.PrimaryPlatform))
+            comparison.PrimaryPlatform = narrative.PrimaryPlatform.Trim();
+
+        if (narrative.Gates is { Count: > 0 })
+            comparison.Gates = narrative.Gates;
+
+        if (narrative.CommercialDrivers is { Count: > 0 })
+            comparison.CommercialDrivers = narrative.CommercialDrivers;
+
+        if (narrative.Sourcing is { Count: > 0 })
+            comparison.Sourcing = narrative.Sourcing;
+
+        if (narrative.SharedControls is { Count: > 0 })
+            comparison.SharedControls = narrative.SharedControls;
+
         foreach (var section in comparison.Sections)
         {
             if (narrative.SectionReasoning is not null &&
@@ -91,16 +106,34 @@ public sealed class CompareAgent : BaseFoundryAgent
         STRUCTURED COMPARISON:
         {{Serialize(structured)}}
 
+        MANDATORY GATES (assess every one, in this order, for BOTH options):
+        {{Serialize(BuildVsBuyFramework.MandatoryGates)}}
+
+        COMMERCIAL DRIVER TAXONOMY (rate every one, using these exact driver names):
+        {{Serialize(BuildVsBuyFramework.CommercialDrivers.Select(d => d.Driver))}}
+
         Return ONLY this JSON object:
         {
           "summary": string,
           "recommendation": "build" | "buy" | "neutral",
           "sectionReasoning": { "<exact section name>": string, ... },
-          "reasoning": string[]
+          "reasoning": string[],
+          "primaryPlatform": string,
+          "gates": [ { "gate": string, "buildStatus": "pass|conditional|fail|unknown",
+                       "buyStatus": "pass|conditional|fail|unknown", "note": string } ],
+          "commercialDrivers": [ { "driver": string, "buildRating": "VH|H|M-H|M|L-M|L",
+                                   "buyRating": "VH|H|M-H|M|L-M|L", "rationale": string,
+                                   "sensitivity": string } ],
+          "sourcing": [ { "capability": string, "choice": "Reuse|Buy|Configure|Extend|Build",
+                          "rationale": string } ],
+          "sharedControls": string[]
         }
 
         Use the EXACT section names from the structured comparison as the keys of sectionReasoning.
-        Choose "neutral" only when Build and Buy are within ~10% on 3-year TCO.
+        Use the EXACT gate and driver names supplied above — one entry each, no additions or omissions.
+        Mark a gate "unknown" when the documents are silent; never assume a pass.
+        Choose "neutral" only when Build and Buy are within ~10% on 3-year TCO and neither has a gate
+        advantage. An option that fails a gate must not be recommended.
 
         SOURCE DOCUMENTS (for context on what the buy price covers):
         {{corpus}}
@@ -116,5 +149,10 @@ public sealed class CompareAgent : BaseFoundryAgent
         [JsonPropertyName("recommendation")] public string Recommendation { get; set; } = "";
         [JsonPropertyName("sectionReasoning")] public Dictionary<string, string>? SectionReasoning { get; set; }
         [JsonPropertyName("reasoning")] public List<string> Reasoning { get; set; } = new();
+        [JsonPropertyName("primaryPlatform")] public string PrimaryPlatform { get; set; } = "";
+        [JsonPropertyName("gates")] public List<MandatoryGateCheck>? Gates { get; set; }
+        [JsonPropertyName("commercialDrivers")] public List<CommercialDriverRating>? CommercialDrivers { get; set; }
+        [JsonPropertyName("sourcing")] public List<CapabilitySourcingDecision>? Sourcing { get; set; }
+        [JsonPropertyName("sharedControls")] public List<string>? SharedControls { get; set; }
     }
 }
