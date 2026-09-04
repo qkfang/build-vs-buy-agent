@@ -84,6 +84,7 @@ public abstract class BaseFoundryAgent
 
     protected static string Serialize(object value) => JsonSerializer.Serialize(value, JsonOpts);
 
+    // Foundry agent names must be alphanumeric with interior hyphens only — no underscores.
     private string ResolveAgentName() =>
         string.IsNullOrWhiteSpace(Options.AgentName)
             ? AgentNameSuffix

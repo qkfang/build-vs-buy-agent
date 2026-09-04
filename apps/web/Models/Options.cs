@@ -18,8 +18,8 @@ public sealed class FoundryOptions
     /// <summary>Model deployment name, e.g. gpt-5.4.</summary>
     public string ModelDeploymentName { get; set; } = "gpt-5.4";
 
-    /// <summary>Optional: name for the ephemeral agent created at runtime.</summary>
-    public string AgentName { get; set; } = "cost-estimator";
+    /// <summary>Prefix for the persistent Foundry agent names, e.g. "bvb" -&gt; <c>bvb-scope-agent</c>.</summary>
+    public string AgentName { get; set; } = "bvb";
 
     /// <summary>When true, attach uploaded docs to a Foundry vector store and enable file search.</summary>
     public bool UseFileSearch { get; set; } = true;

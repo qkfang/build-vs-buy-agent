@@ -94,7 +94,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'Foundry__AgentName'
-          value: 'cost-estimator'
+          value: 'bvb'
         }
         {
           name: 'Foundry__UseFileSearch'
