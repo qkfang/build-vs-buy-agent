@@ -69,7 +69,7 @@ public sealed partial class CostComparisonService
             JobId = job.JobId,
             Notes =
             {
-                "Buy costs are read from the off-the-shelf cost section of the source documents.",
+                "Buy costs come from the Buy tab steps (Spec → Purchase → Operation Cost) when present, otherwise from the off-the-shelf cost section of the source documents.",
                 "All figures are reference estimates for comparison only — not a binding quote."
             }
         };
@@ -87,6 +87,13 @@ public sealed partial class CostComparisonService
         var buyLicensingAnnual = buy.LicensingAnnual;
         var buySupportAnnual = buy.SupportAnnual;
 
+        // Whether the Buy figures come from the structured Buy-tab steps (Purchase / Operation Cost) or were
+        // parsed from the source documents — used to make each section's detail line accurate.
+        var hasStructuredBuy = (job.Purchase?.Items.Count ?? 0) > 0 || (job.BuyOperations?.Items.Count ?? 0) > 0;
+        var purchaseContingency = job.Purchase?.ContingencyPercent ?? 0m;
+        if (hasStructuredBuy)
+            cmp.Notes.Add("Both Build and Buy totals include each step's contingency buffer, matching the figures shown on the Build and Buy tabs.");
+
         // ----- Sections -----
         cmp.Sections.Add(new CostComparisonSection
         {
@@ -95,9 +102,11 @@ public sealed partial class CostComparisonService
             BuildCost = buildOneTime,
             BuildDetail = $"Delivery team build ({job.ProjectCost.Roles.Count} roles, ~{job.ProjectCost.TotalDays:N0} person-days, incl. {job.ProjectCost.ContingencyPercent:N0}% contingency).",
             BuyCost = buyOneTime,
-            BuyDetail = buy.Found
-                ? $"One-time buy items (onboarding, setup, migration, integration, accreditation, training): {buy.OneTimeItems.Count} line(s)."
-                : "No off-the-shelf one-time cost found in the source documents."
+            BuyDetail = hasStructuredBuy
+                ? $"One-time purchase items from the Buy › Purchase step: {buy.OneTimeItems.Count} line(s) (incl. {purchaseContingency:N0}% contingency)."
+                : buy.Found
+                    ? $"One-time buy items parsed from the source documents: {buy.OneTimeItems.Count} line(s)."
+                    : "No off-the-shelf one-time cost found in the Buy documents."
         });
 
         cmp.Sections.Add(new CostComparisonSection
@@ -107,9 +116,11 @@ public sealed partial class CostComparisonService
             BuildCost = buildAzureAnnual,
             BuildDetail = $"Azure infrastructure for production: {Money(job.Cost.MonthlyTotalWithContingency)}/mo × 12 (incl. {job.Cost.ContingencyPercent:N0}% contingency).",
             BuyCost = buyLicensingAnnual,
-            BuyDetail = buy.Found
-                ? "Vendor product licensing / subscription (recurring)."
-                : "No off-the-shelf licensing cost found in the source documents."
+            BuyDetail = hasStructuredBuy
+                ? $"Vendor licensing / subscription from the Buy › Purchase step (recurring, incl. {purchaseContingency:N0}% contingency)."
+                : buy.Found
+                    ? "Vendor product licensing / subscription parsed from the source documents (recurring)."
+                    : "No off-the-shelf licensing cost found in the Buy documents."
         });
 
         cmp.Sections.Add(new CostComparisonSection
@@ -119,9 +130,11 @@ public sealed partial class CostComparisonService
             BuildCost = buildOpsAnnual,
             BuildDetail = $"Ongoing run/support of the built solution: {job.Operations.Items.Count} operating line(s) (incl. {job.Operations.ContingencyPercent:N0}% contingency).",
             BuyCost = buySupportAnnual,
-            BuyDetail = buy.Found
-                ? "Vendor support & maintenance + premium SLA uplift (recurring)."
-                : "No off-the-shelf support cost found in the source documents."
+            BuyDetail = hasStructuredBuy
+                ? "Vendor support + Buy-option run cost from the Buy › Purchase and Operation Cost steps (recurring, incl. contingency)."
+                : buy.Found
+                    ? "Vendor support & maintenance + premium SLA uplift parsed from the source documents (recurring)."
+                    : "No off-the-shelf support cost found in the Buy documents."
         });
 
         // ----- Totals -----
@@ -151,41 +164,51 @@ public sealed partial class CostComparisonService
         var oneTime = new List<BuyLine>();
         var recurring = new List<BuyLine>();
 
-        foreach (var item in job.Purchase?.Items ?? [])
+        // Purchase step (Buy tab, step 2). Apply the SAME contingency the Purchase tab displays so the
+        // Compare figures equal that step's headline numbers — mirroring the Build side, which already
+        // uses its own with-contingency totals (ProjectCost.TotalWithContingency, etc.).
+        var purchase = job.Purchase ?? new PurchaseCost();
+        var purchaseFactor = 1m + purchase.ContingencyPercent / 100m;
+
+        decimal licensingRaw = 0m, supportRaw = 0m;
+        foreach (var item in purchase.Items)
         {
-            var line = new BuyLine(item.Category, item.Cadence, Money2(item.Cost));
             if (string.Equals(item.Cadence, "One-time", StringComparison.OrdinalIgnoreCase))
-                oneTime.Add(line);
+            {
+                oneTime.Add(new BuyLine(item.Category, item.Cadence, Money2(item.Cost)));
+                continue;
+            }
+
+            var annual = string.Equals(item.Cadence, "Monthly", StringComparison.OrdinalIgnoreCase) ? item.Cost * 12m : item.Cost;
+            recurring.Add(new BuyLine(item.Category, item.Cadence, Money2(annual)));
+            if (item.Category.Contains("licen", StringComparison.OrdinalIgnoreCase)
+                || item.Category.Contains("subscription", StringComparison.OrdinalIgnoreCase))
+                licensingRaw += annual;
             else
-                recurring.Add(line);
+                supportRaw += annual;
         }
 
-        decimal licensing = 0m, support = 0m;
-        foreach (var r in recurring)
-        {
-            var annual = string.Equals(r.Type, "Monthly", StringComparison.OrdinalIgnoreCase) ? r.Cost * 12m : r.Cost;
-            if (r.Category.Contains("licen", StringComparison.OrdinalIgnoreCase)
-                || r.Category.Contains("subscription", StringComparison.OrdinalIgnoreCase))
-                licensing += annual;
-            else
-                support += annual;
-        }
+        var oneTimeTotal = purchase.OneTimeTotalWithContingency;   // matches the Purchase tab's "One-time total"
+        // Keep the licensing/support figures as raw decimals and round only once at the return (mirroring
+        // oneTimeTotal above) so no intermediate rounding creeps into the totals.
+        var licensing = licensingRaw * purchaseFactor;
+        var support = supportRaw * purchaseFactor;
 
+        // Buy Operation Cost step (Buy tab, step 3). Apply its own contingency via
+        // OperationCost.AnnualTotalWithContingency so the Compare "run & support" figure equals that tab's
+        // headline "Run cost / yr".
         if (job.BuyOperations is { Items.Count: > 0 } buyOps)
         {
+            support += buyOps.AnnualTotalWithContingency;
             foreach (var item in buyOps.Items)
-            {
-                var annual = item.MonthlyCost * 12m;
-                recurring.Add(new BuyLine(item.Category, item.Cadence, annual));
-                support += annual;
-            }
+                recurring.Add(new BuyLine(item.Category, item.Cadence, Money2(item.MonthlyCost * 12m)));
         }
 
         return new BuyBaseline(
             true,
-            Math.Round(oneTime.Sum(l => l.Cost), 2),
-            Math.Round(licensing, 2),
-            Math.Round(support, 2),
+            Money2(oneTimeTotal),
+            Money2(licensing),
+            Money2(support),
             oneTime,
             recurring);
     }
@@ -279,7 +302,7 @@ public sealed partial class CostComparisonService
         {
             if (!c.BuyCostAvailable)
             {
-                s.Reasoning = "No comparable off-the-shelf figure was found in the source documents for this section.";
+                s.Reasoning = "No comparable off-the-shelf figure was available for this section.";
                 continue;
             }
             var diff = Math.Abs(s.Difference);
@@ -295,7 +318,7 @@ public sealed partial class CostComparisonService
         if (!c.BuyCostAvailable)
         {
             c.Recommendation = "neutral";
-            c.Summary = "The agentic Azure build cost is available, but the source documents do not contain an off-the-shelf 'buy' cost section to compare against. Add a COTS/SaaS price list to the brief to enable a full Build-vs-Buy recommendation.";
+            c.Summary = "The agentic Azure build cost is available, but no off-the-shelf 'buy' cost was found to compare against. Run the Buy tab steps (Spec → Purchase → Operation Cost) with a vendor spec/pricing document, or add a COTS/SaaS price list to the brief, to enable a full Build-vs-Buy recommendation.";
             c.Reasoning.Add($"Build one-time: {Money(t.BuildOneTime)}; build annual run: {Money(t.BuildAnnualRecurring)}.");
             c.Reasoning.Add("No buy baseline detected in the documents, so no comparison could be made.");
             return;
