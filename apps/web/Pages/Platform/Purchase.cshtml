@@ -1,0 +1,32 @@
+@page "/platform/purchase"
+@model Proj37.CostEstimator.Web.Pages.Platform.PurchaseModel
+@{
+    ViewData["Title"] = "Purchase";
+    ViewData["ActivePage"] = "purchase";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Purchase</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+            <p class="hint" id="stepStatus"></p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="runPurchaseBtn" hidden>▶ Run agent</button>
+            <button type="button" class="btn btn-secondary" data-agent-step="purchase">ℹ Agent instructions</button>
+            <a id="downloadBtn" class="btn btn-download" href="#" hidden>⬇ Download Excel</a>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="purchaseCard" hidden>
+    <div id="stepError" class="status error" hidden></div>
+    <p class="hint">All costs to purchase the off-the-shelf solution, extracted from the uploaded Buy documents. The <strong>Qty</strong> and <strong>Unit price</strong> columns are editable — change a value to recalculate the cost live.</p>
+    <div class="totals" id="purchaseTotals"></div>
+    <div id="tab-purchase"></div>
+</section>

@@ -1,0 +1,30 @@
+@page "/platform/features"
+@model Proj37.CostEstimator.Web.Pages.Platform.FeaturesModel
+@{
+    ViewData["Title"] = "Features";
+    ViewData["ActivePage"] = "features";
+}
+
+<section class="card platform-head">
+    <div class="result-head">
+        <div>
+            <h2>Features</h2>
+            <p class="hint" id="ctxLine">No estimation loaded yet.</p>
+            <p class="hint" id="stepStatus"></p>
+        </div>
+        <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="runFeaturesBtn" hidden>▶ Run agent</button>
+            <button type="button" class="btn btn-secondary" data-agent-step="features">ℹ Agent instructions</button>
+        </div>
+    </div>
+</section>
+
+<section class="card" id="emptyState">
+    <p class="muted">No estimation has been run yet. <a href="/">Upload a document or run an example brief</a> to populate Build vs Buy Agent.</p>
+</section>
+
+<section class="card" id="featuresCard" hidden>
+    <div id="stepError" class="status error" hidden></div>
+    <p class="hint">Prioritized feature list for the solution to build, derived from Background and Requirements. Edit rows to adjust; add or remove features as needed.</p>
+    <div id="tab-features"></div>
+</section>

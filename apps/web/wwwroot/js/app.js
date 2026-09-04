@@ -30,9 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (page === 'upload') initUpload();
   else if (page === 'scope') initScope();
   else if (page === 'requirements') initRequirements();
+  else if (page === 'features') initFeatures();
   else if (page === 'cost') initCost();
   else if (page === 'project') initProjectCost();
   else if (page === 'operations') initOperations();
+  else if (page === 'spec') initSpec();
+  else if (page === 'purchase') initPurchase();
+  else if (page === 'buyoperations') initBuyOperations();
   else if (page === 'steps') initSteps();
   else if (page === 'compare') initCompare();
   else if (page === 'estimations') initEstimations();
@@ -377,6 +381,28 @@ async function initRequirements() {
   renderRequirements(data.requirements || []);
 }
 
+async function initFeatures() {
+  const { mode, data } = await loadPlatformState(j => Array.isArray(j.features?.features) && j.features.features.length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#featuresCard')) return;
+  wireRunButton('#runFeaturesBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('features', '#runFeaturesBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'features');
+      renderFeaturesOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'features');
+    renderFeaturesOrPending(data);
+    return;
+  }
+  renderFeatures((data.features && data.features.features) || []);
+}
+
 async function initCost() {
   const { mode, data } = await loadPlatformState(j => ((j.cost && j.cost.lineItems) || []).length > 0);
   platformContext(mode, data);
@@ -634,6 +660,74 @@ async function initOperations() {
   renderOperations(data.operations || {});
 }
 
+async function initSpec() {
+  const { mode, data } = await loadPlatformState(j => !!j.spec?.vendorName);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#specCard')) return;
+  wireBuyDocumentUpload(mode);
+  wireRunButton('#runSpecBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('spec', '#runSpecBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'spec');
+      renderSpecOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderBuyDocuments(data);
+    renderSessionStepMeta(data, 'spec');
+    renderSpecOrPending(data);
+    return;
+  }
+  renderSpec(data.spec || {});
+}
+
+async function initPurchase() {
+  const { mode, data } = await loadPlatformState(j => ((j.purchase && j.purchase.items) || []).length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#purchaseCard')) return;
+  wireRunButton('#runPurchaseBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('purchase', '#runPurchaseBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'purchase');
+      renderPurchaseOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'purchase');
+    renderPurchaseOrPending(data);
+    return;
+  }
+  renderPurchase(data.purchase || {});
+}
+
+async function initBuyOperations() {
+  const { mode, data } = await loadPlatformState(j => ((j.buyOperations && j.buyOperations.items) || []).length > 0);
+  platformContext(mode, data);
+  if (!showOrEmpty(data, '#buyOperationsCard')) return;
+  wireRunButton('#runBuyOperationsBtn', mode, async () => {
+    try {
+      const session = await postSessionStep('buyoperations', '#runBuyOperationsBtn', 'Running…');
+      platformContext('session', session);
+      renderSessionStepMeta(session, 'buyoperations');
+      renderBuyOperationsOrPending(session);
+    } catch (err) {
+      const error = $('#stepError'); if (error) { error.hidden = false; error.textContent = err.message; }
+    }
+  });
+  if (mode === 'session') {
+    renderSessionStepMeta(data, 'buyoperations');
+    renderBuyOperationsOrPending(data);
+    return;
+  }
+  renderBuyOperations(data.buyOperations || {});
+}
+
 function renderScopeOrPending(session) {
   if (session.scope) {
     renderScope(session.scope);
@@ -701,6 +795,58 @@ function renderOperationsOrPending(session) {
   const totals = $('#operationsTotals'); if (totals) totals.innerHTML = '';
   $('#tab-operations').innerHTML = '<p class="muted">Operation Cost has not been generated yet. Run Scope first, then click <strong>Run agent</strong> here.</p>';
 }
+
+function renderFeaturesOrPending(session) {
+  const features = (session.features && session.features.features) || [];
+  if (features.length) {
+    renderFeatures(features);
+    return;
+  }
+  $('#tab-features').innerHTML = '<p class="muted">Features have not been generated yet. Run Background and Requirements first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderSpecOrPending(session) {
+  if (session.spec && session.spec.vendorName) {
+    renderSpec(session.spec);
+    return;
+  }
+  $('#tab-spec').innerHTML = '<p class="muted">Spec has not been generated yet. Upload a Buy document above, then click <strong>Run agent</strong>.</p>';
+}
+
+function renderPurchaseOrPending(session) {
+  const dl = $('#downloadBtn');
+  if (session.purchase && dl) {
+    dl.hidden = false;
+    dl.href = `/api/sessions/${session.sessionId}/workbook`;
+    dl.setAttribute('download', '');
+  } else if (dl) {
+    dl.hidden = true;
+  }
+  if (session.purchase && (session.purchase.items || []).length) {
+    renderPurchase(session.purchase);
+    return;
+  }
+  const totals = $('#purchaseTotals'); if (totals) totals.innerHTML = '';
+  $('#tab-purchase').innerHTML = '<p class="muted">Purchase cost has not been generated yet. Run Spec first, then click <strong>Run agent</strong> here.</p>';
+}
+
+function renderBuyOperationsOrPending(session) {
+  const dl = $('#downloadBtn');
+  if (session.buyOperations && dl) {
+    dl.hidden = false;
+    dl.href = `/api/sessions/${session.sessionId}/workbook`;
+    dl.setAttribute('download', '');
+  } else if (dl) {
+    dl.hidden = true;
+  }
+  if (session.buyOperations && (session.buyOperations.items || []).length) {
+    renderBuyOperations(session.buyOperations);
+    return;
+  }
+  const totals = $('#buyOperationsTotals'); if (totals) totals.innerHTML = '';
+  $('#tab-buyoperations').innerHTML = '<p class="muted">Operation Cost has not been generated yet. Run Spec first, then click <strong>Run agent</strong> here.</p>';
+}
+
 
 function renderCompareOrPending(session) {
   if (session.compare) {
@@ -849,6 +995,240 @@ function onRemoveRequirement(e) {
   if (!reqs || !reqs[idx]) return;
   reqs.splice(idx, 1);
   renderRequirements(reqs);
+}
+
+// ---------------------------------------------------------------- Features (Scope tab, step 3)
+// Editable list, mirroring the Requirements table pattern.
+let FEATURES_STATE = null;
+const FEATURE_PRIORITIES = ['Must', 'Should', 'Could'];
+
+function renderFeatures(features) {
+  FEATURES_STATE = features;
+  if (!features.length) {
+    $('#tab-features').innerHTML = '<p class="muted">No features.</p><button type="button" class="btn btn-secondary" id="addFeatureBtn">+ Add feature</button>';
+    $('#addFeatureBtn').addEventListener('click', onAddFeature);
+    return;
+  }
+  const rows = features.map((f, idx) => `<tr>
+      <td><input class="text-input" type="text" data-row="${idx}" data-field="name" value="${esc(f.name)}" aria-label="Name for feature ${idx + 1}" /></td>
+      <td><input class="text-input" type="text" data-row="${idx}" data-field="category" value="${esc(f.category)}" aria-label="Category for feature ${idx + 1}" /></td>
+      <td><select class="text-input pill-select ${esc(f.priority)}" data-row="${idx}" data-field="priority" aria-label="Priority for feature ${idx + 1}">
+        ${FEATURE_PRIORITIES.map(p => `<option value="${p}" ${p === f.priority ? 'selected' : ''}>${p}</option>`).join('')}
+      </select></td>
+      <td><input class="text-input text-input-wide" type="text" data-row="${idx}" data-field="description" value="${esc(f.description)}" aria-label="Description for feature ${idx + 1}" /></td>
+      <td class="num-col"><button type="button" class="btn-icon remove-row-btn" data-row="${idx}" aria-label="Remove feature ${idx + 1}" title="Remove feature">✕</button></td></tr>`).join('');
+  $('#tab-features').innerHTML = `
+    <table><thead><tr><th>Feature</th><th>Category</th><th>Priority</th><th>Description</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <p class="row-actions"><button type="button" class="btn btn-secondary" id="addFeatureBtn">+ Add feature</button></p>`;
+  $all('.text-input', $('#tab-features')).forEach(el => el.addEventListener('input', onFeatureEdit));
+  $all('.pill-select', $('#tab-features')).forEach(el => el.addEventListener('change', onFeatureEdit));
+  $all('.remove-row-btn', $('#tab-features')).forEach(btn => btn.addEventListener('click', onRemoveFeature));
+  $('#addFeatureBtn').addEventListener('click', onAddFeature);
+}
+
+function onFeatureEdit(e) {
+  const idx = Number(e.target.dataset.row);
+  const field = e.target.dataset.field;
+  const features = FEATURES_STATE;
+  if (!features || !features[idx]) return;
+  features[idx][field] = e.target.value;
+  if (field === 'priority') {
+    e.target.className = `text-input pill-select ${esc(e.target.value)}`;
+  }
+}
+
+function onAddFeature() {
+  const features = FEATURES_STATE || [];
+  features.push({ name: '', category: '', priority: 'Should', description: '' });
+  renderFeatures(features);
+}
+
+function onRemoveFeature(e) {
+  const idx = Number(e.target.dataset.row);
+  const features = FEATURES_STATE;
+  if (!features || !features[idx]) return;
+  features.splice(idx, 1);
+  renderFeatures(features);
+}
+
+// ---------------------------------------------------------------- Spec (Buy tab, step 1)
+function renderSpec(s) {
+  const ul = (arr) => (arr && arr.length) ? '<ul class="tight">' + arr.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '<span class="muted">—</span>';
+  $('#tab-spec').innerHTML = `
+    <dl class="kv">
+      <dt>Vendor</dt><dd>${esc(s.vendorName)}</dd>
+      <dt>Product overview</dt><dd>${esc(s.productOverview)}</dd>
+      <dt>Key capabilities</dt><dd>${ul(s.keyCapabilities)}</dd>
+      <dt>Constraints</dt><dd>${ul(s.constraints)}</dd>
+      <dt>Licensing model</dt><dd>${esc(s.licensingModel)}</dd>
+    </dl>`;
+}
+
+function renderBuyDocuments(session) {
+  const list = $('#buyDocList');
+  if (!list) return;
+  const docs = session.buyDocuments || [];
+  list.innerHTML = docs.length
+    ? docs.map(d => `<div class="file-chip"><span>📄 ${esc(d.fileName)}</span></div>`).join('')
+    : '<p class="muted">No Buy documents uploaded yet.</p>';
+}
+
+let buySelectedFiles = [];
+
+function wireBuyDocumentUpload(mode) {
+  const input = $('#buyFileInput');
+  const form = $('#buyUploadForm');
+  if (!input || !form || form.dataset.wired) return;
+  form.dataset.wired = '1';
+  input.addEventListener('change', () => {
+    buySelectedFiles = Array.from(input.files);
+    const label = $('#buyDropLabel');
+    if (label) label.textContent = buySelectedFiles.length ? buySelectedFiles.length + ' file(s) selected' : 'Click to choose files or drag & drop';
+  });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const session = Store.getSession();
+    if (!session?.sessionId) { const s = $('#buyUploadStatus'); if (s) { s.hidden = false; s.textContent = 'Load or create a session first.'; s.className = 'status error'; } return; }
+    if (!buySelectedFiles.length) { const s = $('#buyUploadStatus'); if (s) { s.hidden = false; s.textContent = 'Choose at least one document.'; s.className = 'status error'; } return; }
+    const fd = new FormData();
+    buySelectedFiles.forEach(f => fd.append('files', f));
+    const status = $('#buyUploadStatus');
+    if (status) { status.hidden = false; status.textContent = 'Uploading…'; status.className = 'status busy'; }
+    try {
+      const r = await fetch(`/api/sessions/${encodeURIComponent(session.sessionId)}/buy-documents`, { method: 'POST', body: fd });
+      const payload = await r.json();
+      if (!r.ok) throw new Error(payload.error || r.statusText);
+      Store.setSession(payload);
+      buySelectedFiles = [];
+      input.value = '';
+      const label = $('#buyDropLabel'); if (label) label.textContent = 'Click to choose files or drag & drop';
+      renderBuyDocuments(payload);
+      if (status) { status.textContent = 'Buy document(s) uploaded. Click Run agent to summarise the spec.'; status.className = 'status info'; }
+    } catch (err) {
+      if (status) { status.textContent = 'Upload failed: ' + err.message; status.className = 'status error'; }
+    }
+  });
+}
+
+// ---------------------------------------------------------------- Purchase (Buy tab, step 2)
+let PURCHASE_STATE = null;
+
+function purchaseTotals(p) {
+  const items = p.items || [];
+  const oneTimeRaw = items.filter(i => i.cadence === 'One-time').reduce((s, i) => s + Number(i.cost || 0), 0);
+  const recurringRaw = items.filter(i => i.cadence !== 'One-time').reduce((s, i) => {
+    const annual = i.cadence === 'Monthly' ? Number(i.cost || 0) * 12 : Number(i.cost || 0);
+    return s + annual;
+  }, 0);
+  const pct = Number(p.contingencyPercent || 0);
+  return {
+    oneTimeRaw, recurringRaw,
+    oneTimeTotal: Math.round(oneTimeRaw * (1 + pct / 100) * 100) / 100,
+    recurringTotal: Math.round(recurringRaw * (1 + pct / 100) * 100) / 100
+  };
+}
+
+function renderPurchaseTotals(p) {
+  const el = $('#purchaseTotals');
+  if (!el) return;
+  const t = purchaseTotals(p);
+  const pct = Number(p.contingencyPercent || 0);
+  el.innerHTML = `
+    <div class="total-box hi"><div class="num">${fmtMoney(t.oneTimeTotal, p.currency)}</div><div class="lbl">One-time total</div></div>
+    <div class="total-box"><div class="num">${fmtMoney(t.recurringTotal, p.currency)}</div><div class="lbl">Recurring / yr</div></div>
+    <div class="total-box"><div class="num">${(p.items || []).length}</div><div class="lbl">Line items</div></div>
+    <div class="total-box"><div class="num">${pct}%</div><div class="lbl">Contingency</div></div>`;
+}
+
+function renderPurchase(p) {
+  PURCHASE_STATE = p;
+  const items = p.items || [];
+  items.forEach(i => { i.cost = Math.round(Number(i.quantity || 0) * Number(i.unitPrice || 0) * 100) / 100; });
+  renderPurchaseTotals(p);
+  if (!items.length) { $('#tab-purchase').innerHTML = '<p class="muted">No purchase line items were generated. Upload vendor pricing on the Spec step and run this agent again.</p>'; return; }
+  const rows = items.map((i, idx) => `<tr>
+      <td>${esc(i.category)}</td><td>${esc(i.item)}</td><td class="muted">${esc(i.description)}</td>
+      <td>${esc(i.cadence)}</td>
+      <td class="num-col"><input class="qty-input" type="number" min="0" step="any" data-row="${idx}" data-field="qty" value="${Number(i.quantity)}" aria-label="Quantity for ${esc(i.item)}" /></td>
+      <td class="num-col"><input class="qty-input" type="number" min="0" step="any" data-row="${idx}" data-field="unitPrice" value="${Number(i.unitPrice)}" aria-label="Unit price for ${esc(i.item)}" /></td>
+      <td class="muted">${esc(i.unit)}</td>
+      <td class="num-col" data-purchase="${idx}"><strong>${fmtMoney(i.cost, p.currency)}</strong></td></tr>`).join('');
+  $('#tab-purchase').innerHTML = `
+    <table><thead><tr><th>Category</th><th>Item</th><th>Description</th><th>Cadence</th>
+      <th class="num-col">Qty</th><th class="num-col">Unit price</th><th>Unit</th><th class="num-col">Cost</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <p class="muted" style="margin-top:.7rem">${(p.notes || []).map(esc).join(' · ')}</p>`;
+  $all('.qty-input', $('#tab-purchase')).forEach(inp => inp.addEventListener('input', onPurchaseEdit));
+}
+
+function onPurchaseEdit(e) {
+  const idx = Number(e.target.dataset.row);
+  const field = e.target.dataset.field;
+  const p = PURCHASE_STATE;
+  if (!p || !p.items[idx]) return;
+  const val = Number(e.target.value);
+  const safe = isFinite(val) && val >= 0 ? val : 0;
+  const item = p.items[idx];
+  if (field === 'qty') item.quantity = safe; else item.unitPrice = safe;
+  item.cost = Math.round(Number(item.quantity || 0) * Number(item.unitPrice || 0) * 100) / 100;
+  const cell = $(`[data-purchase="${idx}"]`); if (cell) cell.innerHTML = `<strong>${fmtMoney(item.cost, p.currency)}</strong>`;
+  renderPurchaseTotals(p);
+}
+
+// ---------------------------------------------------------------- Operation Cost (Buy tab, step 3)
+let BUY_OPERATIONS_STATE = null;
+
+function renderBuyOperationsTotals(o) {
+  const el = $('#buyOperationsTotals');
+  if (!el) return;
+  const pct = Number(o.contingencyPercent || 0);
+  const raw = (o.items || []).reduce((s, i) => s + Number(i.monthlyCost || 0), 0);
+  const monthly = Math.round(raw * (1 + pct / 100) * 100) / 100;
+  el.innerHTML = `
+    <div class="total-box hi"><div class="num">${fmtMoney(monthly, o.currency)}</div><div class="lbl">Run cost / mo</div></div>
+    <div class="total-box"><div class="num">${fmtMoney(monthly * 12, o.currency)}</div><div class="lbl">Run cost / yr</div></div>
+    <div class="total-box"><div class="num">${fmtMoney(raw, o.currency)}</div><div class="lbl">Monthly (excl. contingency)</div></div>
+    <div class="total-box"><div class="num">${(o.items || []).length}</div><div class="lbl">Line items</div></div>
+    <div class="total-box"><div class="num">${pct}%</div><div class="lbl">Contingency</div></div>`;
+}
+
+function renderBuyOperations(o) {
+  BUY_OPERATIONS_STATE = o;
+  const items = o.items || [];
+  items.forEach(i => { i.monthlyCost = Math.round(Number(i.quantity || 0) * Number(i.unitPrice || 0) * 100) / 100; });
+  renderBuyOperationsTotals(o);
+  if (!items.length) { $('#tab-buyoperations').innerHTML = '<p class="muted">No operating line items were generated for the Buy option. Upload vendor pricing on the Spec step and run this agent again.</p>'; return; }
+  const rows = items.map((i, idx) => `<tr>
+      <td>${esc(i.category)}</td><td>${esc(i.item)}</td><td class="muted">${esc(i.description)}</td>
+      <td class="num-col"><input class="qty-input" type="number" min="0" step="any" data-row="${idx}" data-field="qty" value="${Number(i.quantity)}" aria-label="Quantity for ${esc(i.item)}" /></td>
+      <td class="num-col"><input class="qty-input" type="number" min="0" step="any" data-row="${idx}" data-field="unitPrice" value="${Number(i.unitPrice)}" aria-label="Unit price for ${esc(i.item)}" /></td>
+      <td class="muted">${esc(i.unit)}</td>
+      <td class="num-col" data-buyop="${idx}"><strong>${fmtMoney(i.monthlyCost, o.currency)}</strong></td></tr>`).join('');
+  $('#tab-buyoperations').innerHTML = `
+    <table><thead><tr><th>Category</th><th>Item</th><th>Description</th>
+      <th class="num-col">Qty</th><th class="num-col">Unit price</th><th>Unit</th><th class="num-col">Monthly</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><th colspan="6" class="num-col">Monthly total (incl. <span>${o.contingencyPercent}</span>% contingency)</th>
+      <th class="num-col" id="buyOperationsFootTotal">${fmtMoney(Math.round((items.reduce((s, i) => s + Number(i.monthlyCost || 0), 0)) * (1 + Number(o.contingencyPercent || 0) / 100) * 100) / 100, o.currency)}</th></tr></tfoot></table>
+    <p class="muted" style="margin-top:.7rem">${(o.notes || []).map(esc).join(' · ')}</p>`;
+  $all('.qty-input', $('#tab-buyoperations')).forEach(inp => inp.addEventListener('input', onBuyOperationsEdit));
+}
+
+function onBuyOperationsEdit(e) {
+  const idx = Number(e.target.dataset.row);
+  const field = e.target.dataset.field;
+  const o = BUY_OPERATIONS_STATE;
+  if (!o || !o.items[idx]) return;
+  const val = Number(e.target.value);
+  const safe = isFinite(val) && val >= 0 ? val : 0;
+  const item = o.items[idx];
+  if (field === 'qty') item.quantity = safe; else item.unitPrice = safe;
+  item.monthlyCost = Math.round(Number(item.quantity || 0) * Number(item.unitPrice || 0) * 100) / 100;
+  const cell = $(`[data-buyop="${idx}"]`); if (cell) cell.innerHTML = `<strong>${fmtMoney(item.monthlyCost, o.currency)}</strong>`;
+  const raw = o.items.reduce((s, i) => s + Number(i.monthlyCost || 0), 0);
+  const foot = $('#buyOperationsFootTotal'); if (foot) foot.textContent = fmtMoney(Math.round(raw * (1 + Number(o.contingencyPercent || 0) / 100) * 100) / 100, o.currency);
+  renderBuyOperationsTotals(o);
 }
 
 // Editable cost model with non-prod / prod / total environment views. Qty cells are inputs; editing

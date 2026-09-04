@@ -25,9 +25,13 @@ public sealed partial class SessionService
     private readonly OfflineEstimationEngine _offline;
     private readonly ScopeAgent _scopeAgent;
     private readonly RequirementsAgent _requirementsAgent;
+    private readonly FeaturesAgent _featuresAgent;
     private readonly CostModelAgent _costModelAgent;
     private readonly ProjectCostAgent _projectCostAgent;
     private readonly OperationCostAgent _operationCostAgent;
+    private readonly SpecAgent _specAgent;
+    private readonly PurchaseAgent _purchaseAgent;
+    private readonly BuyOperationCostAgent _buyOperationCostAgent;
     private readonly CostComparisonService _comparisonService;
     private readonly ExcelReportGenerator _excel;
     private readonly FoundryOptions _foundryOptions;
@@ -41,9 +45,13 @@ public sealed partial class SessionService
         OfflineEstimationEngine offline,
         ScopeAgent scopeAgent,
         RequirementsAgent requirementsAgent,
+        FeaturesAgent featuresAgent,
         CostModelAgent costModelAgent,
         ProjectCostAgent projectCostAgent,
         OperationCostAgent operationCostAgent,
+        SpecAgent specAgent,
+        PurchaseAgent purchaseAgent,
+        BuyOperationCostAgent buyOperationCostAgent,
         CostComparisonService comparisonService,
         ExcelReportGenerator excel,
         FoundryOptions foundryOptions,
@@ -55,9 +63,13 @@ public sealed partial class SessionService
         _offline = offline;
         _scopeAgent = scopeAgent;
         _requirementsAgent = requirementsAgent;
+        _featuresAgent = featuresAgent;
         _costModelAgent = costModelAgent;
         _projectCostAgent = projectCostAgent;
         _operationCostAgent = operationCostAgent;
+        _specAgent = specAgent;
+        _purchaseAgent = purchaseAgent;
+        _buyOperationCostAgent = buyOperationCostAgent;
         _comparisonService = comparisonService;
         _excel = excel;
         _foundryOptions = foundryOptions;
@@ -102,6 +114,38 @@ public sealed partial class SessionService
             throw new InvalidOperationException("No supported documents were provided. Supported: " + string.Join(", ", _ingestion.SupportedExtensions));
         }
 
+        Persist(session);
+        return session;
+    }
+
+    /// <summary>
+    /// Adds one or more uploaded "Buy" documents (vendor spec / cost sheets) to the session, distinct from
+    /// the original session documents used for the Build tab.
+    /// </summary>
+    public async Task<AgentSession> AddBuyDocumentsAsync(string sessionId, IEnumerable<EstimationJobService.UploadedFile> files, CancellationToken ct = default)
+    {
+        var session = Get(sessionId) ?? throw new FileNotFoundException("Session not found.", sessionId);
+
+        var added = 0;
+        foreach (var file in files)
+        {
+            if (!_ingestion.IsSupported(file.FileName))
+            {
+                _logger.LogWarning("Skipping unsupported Buy document upload {File}", file.FileName);
+                continue;
+            }
+
+            var document = await _ingestion.IngestAsync(file.FileName, file.ContentType, file.Content, ct);
+            session.BuyDocuments.Add(document);
+            added++;
+        }
+
+        if (added == 0)
+        {
+            throw new InvalidOperationException("No supported documents were provided. Supported: " + string.Join(", ", _ingestion.SupportedExtensions));
+        }
+
+        session.UpdatedUtc = DateTimeOffset.UtcNow;
         Persist(session);
         return session;
     }
@@ -200,6 +244,9 @@ public sealed partial class SessionService
                 case "requirements":
                     await RunRequirementsAsync(session, ct);
                     break;
+                case "features":
+                    await RunFeaturesAsync(session, ct);
+                    break;
                 case "cost":
                     await RunCostAsync(session, ct);
                     break;
@@ -208,6 +255,15 @@ public sealed partial class SessionService
                     break;
                 case "operations":
                     await RunOperationsAsync(session, ct);
+                    break;
+                case "spec":
+                    await RunSpecAsync(session, ct);
+                    break;
+                case "purchase":
+                    await RunPurchaseAsync(session, ct);
+                    break;
+                case "buyoperations":
+                    await RunBuyOperationsAsync(session, ct);
                     break;
                 case "compare":
                     await RunCompareAsync(session, ct);
@@ -321,6 +377,36 @@ public sealed partial class SessionService
         session.AgentSteps.Add(new AgentStepLog { Step = "requirements", Summary = $"Synthesized {session.Requirements.Count} technical requirements across {session.Requirements.Select(r => r.Category).Distinct().Count()} categories." });
     }
 
+    private async Task RunFeaturesAsync(AgentSession session, CancellationToken ct)
+    {
+        if (session.Scope is null || session.Requirements.Count == 0)
+            throw new InvalidOperationException("Run Background and Requirements first before running Features.");
+
+        var corpus = BaseFoundryAgent.BuildCorpus(session.Documents);
+        if (_foundryOptions.IsConfigured)
+        {
+            try
+            {
+                session.Features = await _featuresAgent.RunAsync(corpus, session.Scope, session.Requirements, ct);
+                session.Engine = "foundry";
+                session.AgentSteps.Add(new AgentStepLog { Step = "features", Summary = $"Foundry agent proposed {session.Features.Features.Count} features." });
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Foundry features agent failed for {SessionId}; using offline fallback.", session.SessionId);
+                session.Features = _offline.EstimateFeatures(session.Scope, session.Requirements);
+                session.Engine = "offline";
+                session.AgentSteps.Add(new AgentStepLog { Step = "features", Summary = $"Foundry features agent failed ({ex.GetType().Name}); used deterministic offline feature list: {session.Features.Features.Count} derived." });
+                return;
+            }
+        }
+
+        session.Features = _offline.EstimateFeatures(session.Scope, session.Requirements);
+        session.Engine = "offline";
+        session.AgentSteps.Add(new AgentStepLog { Step = "features", Summary = $"Derived {session.Features.Features.Count} candidate features from scope and requirements." });
+    }
+
     private async Task RunCostAsync(AgentSession session, CancellationToken ct)
     {
         if (session.Scope is null)
@@ -411,6 +497,96 @@ public sealed partial class SessionService
         session.AgentSteps.Add(new AgentStepLog { Step = "operations", Summary = $"Estimated {session.Operations.Items.Count} ongoing operating line items. Monthly run cost (incl. {session.Operations.ContingencyPercent}% contingency): {session.Operations.Currency} {session.Operations.MonthlyTotalWithContingency:N2}." });
     }
 
+    private async Task RunSpecAsync(AgentSession session, CancellationToken ct)
+    {
+        if (session.Scope is null)
+            throw new InvalidOperationException("Run the Scope tab's Background step first before running Spec.");
+
+        var buyCorpus = BaseFoundryAgent.BuildCorpus(session.BuyDocuments);
+        if (_foundryOptions.IsConfigured)
+        {
+            try
+            {
+                session.Spec = await _specAgent.RunAsync(buyCorpus, session.Scope, ct);
+                session.Engine = "foundry";
+                session.AgentSteps.Add(new AgentStepLog { Step = "spec", Summary = $"Foundry agent summarised vendor spec for {session.Spec.VendorName}." });
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Foundry spec agent failed for {SessionId}; using offline fallback.", session.SessionId);
+                session.Spec = _offline.EstimateBuySpec(session.BuyDocuments);
+                session.Engine = "offline";
+                session.AgentSteps.Add(new AgentStepLog { Step = "spec", Summary = $"Foundry spec agent failed ({ex.GetType().Name}); used deterministic offline spec summary." });
+                return;
+            }
+        }
+
+        session.Spec = _offline.EstimateBuySpec(session.BuyDocuments);
+        session.Engine = "offline";
+        session.AgentSteps.Add(new AgentStepLog { Step = "spec", Summary = $"Derived vendor spec summary from {session.BuyDocuments.Count} uploaded Buy document(s)." });
+    }
+
+    private async Task RunPurchaseAsync(AgentSession session, CancellationToken ct)
+    {
+        if (session.Scope is null || session.Spec is null)
+            throw new InvalidOperationException("Run Scope and Spec first before running Purchase.");
+
+        var buyCorpus = BaseFoundryAgent.BuildCorpus(session.BuyDocuments);
+        if (_foundryOptions.IsConfigured)
+        {
+            try
+            {
+                session.Purchase = await _purchaseAgent.RunAsync(buyCorpus, session.Spec, session.Scope, ct);
+                session.Engine = "foundry";
+                session.AgentSteps.Add(new AgentStepLog { Step = "purchase", Summary = $"Foundry agent extracted {session.Purchase.Items.Count} purchase line items; one-time {session.Purchase.Currency} {session.Purchase.OneTimeTotalWithContingency:N2} + recurring {session.Purchase.RecurringAnnualTotalWithContingency:N2}/yr (incl. contingency)." });
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Foundry purchase agent failed for {SessionId}; using offline fallback.", session.SessionId);
+                session.Purchase = _offline.EstimatePurchaseCost(session.BuyDocuments);
+                session.Engine = "offline";
+                session.AgentSteps.Add(new AgentStepLog { Step = "purchase", Summary = $"Foundry purchase agent failed ({ex.GetType().Name}); used deterministic offline purchase cost: {session.Purchase.Items.Count} line item(s)." });
+                return;
+            }
+        }
+
+        session.Purchase = _offline.EstimatePurchaseCost(session.BuyDocuments);
+        session.Engine = "offline";
+        session.AgentSteps.Add(new AgentStepLog { Step = "purchase", Summary = $"Extracted {session.Purchase.Items.Count} purchase line items from the uploaded Buy documents." });
+    }
+
+    private async Task RunBuyOperationsAsync(AgentSession session, CancellationToken ct)
+    {
+        if (session.Scope is null || session.Spec is null)
+            throw new InvalidOperationException("Run Scope and Spec first before running Operation Cost.");
+
+        var buyCorpus = BaseFoundryAgent.BuildCorpus(session.BuyDocuments);
+        if (_foundryOptions.IsConfigured)
+        {
+            try
+            {
+                session.BuyOperations = await _buyOperationCostAgent.RunAsync(buyCorpus, session.Spec, session.Scope, ct);
+                session.Engine = "foundry";
+                session.AgentSteps.Add(new AgentStepLog { Step = "buyoperations", Summary = $"Foundry agent estimated {session.BuyOperations.Items.Count} Buy-option operating line items; monthly run cost {session.BuyOperations.Currency} {session.BuyOperations.MonthlyTotalWithContingency:N2} (incl. contingency)." });
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Foundry Buy operation-cost agent failed for {SessionId}; using offline fallback.", session.SessionId);
+                session.BuyOperations = _offline.EstimateBuyOperations(session.BuyDocuments, session.Scope);
+                session.Engine = "offline";
+                session.AgentSteps.Add(new AgentStepLog { Step = "buyoperations", Summary = $"Foundry Buy operation-cost agent failed ({ex.GetType().Name}); used deterministic offline run model: {session.BuyOperations.MonthlyTotalWithContingency:N2}/mo." });
+                return;
+            }
+        }
+
+        session.BuyOperations = _offline.EstimateBuyOperations(session.BuyDocuments, session.Scope);
+        session.Engine = "offline";
+        session.AgentSteps.Add(new AgentStepLog { Step = "buyoperations", Summary = $"Estimated {session.BuyOperations.Items.Count} ongoing Buy-option operating line items. Monthly run cost (incl. {session.BuyOperations.ContingencyPercent}% contingency): {session.BuyOperations.Currency} {session.BuyOperations.MonthlyTotalWithContingency:N2}." });
+    }
+
     private async Task RunCompareAsync(AgentSession session, CancellationToken ct)
     {
         if (session.Cost is null || session.ProjectCost is null || session.Operations is null)
@@ -458,6 +634,15 @@ public sealed partial class SessionService
         if (step is "requirements" or "cost" or "project" or "operations" && session.Scope is null)
             throw new InvalidOperationException("Run Scope first before running this step.");
 
+        if (step == "features" && (session.Scope is null || session.Requirements.Count == 0))
+            throw new InvalidOperationException("Run Background and Requirements first before running Features.");
+
+        if (step == "spec" && session.Scope is null)
+            throw new InvalidOperationException("Run the Scope tab's Background step first before running Spec.");
+
+        if (step is "purchase" or "buyoperations" && (session.Scope is null || session.Spec is null))
+            throw new InvalidOperationException("Run Scope and Spec first before running this step.");
+
         if (step == "compare" && (session.Cost is null || session.ProjectCost is null || session.Operations is null))
             throw new InvalidOperationException("Run Cost Model, Project Cost, and Operation Cost before Compare.");
     }
@@ -481,9 +666,14 @@ public sealed partial class SessionService
         Documents = session.Documents,
         Scope = session.Scope ?? new ScopeSummary(),
         Requirements = session.Requirements,
+        Features = session.Features ?? new FeatureSet(),
         Cost = session.Cost ?? new CostEstimate(),
         ProjectCost = session.ProjectCost ?? new ProjectBuildCost(),
         Operations = session.Operations ?? new OperationCost(),
+        BuyDocuments = session.BuyDocuments,
+        Spec = session.Spec ?? new BuySpecSummary(),
+        Purchase = session.Purchase ?? new PurchaseCost(),
+        BuyOperations = session.BuyOperations ?? new OperationCost(),
         AgentSteps = session.AgentSteps
     };
 

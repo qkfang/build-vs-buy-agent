@@ -282,5 +282,137 @@ public static class AgentInstructions
             "  Use only the provided structured comparison and the source documents. Treat all figures as\n" +
             "  reference estimates to be validated before any commitment.");
 
-    public static readonly IReadOnlyList<StepInstruction> All = new[] { Scope, Requirements, Cost, ProjectCost, Operations, Compare };
+    // ---------------------------------------------------------------- Scope tab: Features step
+
+    public static readonly StepInstruction Features = new(
+        Key: "features",
+        Title: "Features",
+        Agent: "Product Feature Analyst agent",
+        Goal: "Turn the scope and requirements into a prioritized list of features the solution must deliver.",
+        Instructions:
+            "ROLE:\n" +
+            "  You are the Product Feature Analyst. You translate the approved scope and technical\n" +
+            "  requirements into a concrete, prioritized feature list a product/delivery team can build\n" +
+            "  against and later cost.\n\n" +
+            "OBJECTIVE:\n" +
+            "  Produce a feature list covering the core capability plus supporting/admin/integration\n" +
+            "  features, each with a category and MoSCoW priority.\n\n" +
+            "INPUTS:\n" +
+            "  • The SCOPE and REQUIREMENTS produced by the previous Scope-tab steps.\n" +
+            "  • The original source documents (for detail and traceability).\n\n" +
+            "METHOD:\n" +
+            "  1. Identify the core, must-have capability directly from the business goal.\n" +
+            "  2. Add supporting features: administration, reporting, integration points, notifications.\n" +
+            "  3. Group each feature into a category and assign a MoSCoW priority.\n" +
+            "  4. Keep features atomic and non-overlapping; do not restate requirements verbatim.\n\n" +
+            "OUTPUT CONTRACT (single JSON object):\n" +
+            "  { \"features\": [ { name, description, category, priority } ] }\n" +
+            "    category  — Core | Enhancement | Integration | Admin\n" +
+            "    priority  — Must | Should | Could\n\n" +
+            "QUALITY BAR:\n" +
+            "  • 6-12 features; each is a distinct, buildable capability.\n" +
+            "  • Every feature traces to the scope or requirements (no orphans).\n\n" +
+            "GROUNDING:\n" +
+            "  Derive only from the scope, requirements, and documents already supplied.");
+
+    // ---------------------------------------------------------------- Buy tab: Spec, Purchase, Operation Cost
+
+    public static readonly StepInstruction Spec = new(
+        Key: "spec",
+        Title: "Spec",
+        Agent: "Vendor Spec Analyst agent",
+        Goal: "Read the uploaded off-the-shelf / vendor documents (spec + cost) and summarise the product being considered for Buy.",
+        Instructions:
+            "ROLE:\n" +
+            "  You are the Vendor Spec Analyst. You read documentation for an off-the-shelf / vendor\n" +
+            "  ('buy') product and produce a structured summary the Buy workflow depends on.\n\n" +
+            "OBJECTIVE:\n" +
+            "  Produce a single SPEC summary describing the vendor product: what it offers, its\n" +
+            "  capabilities, constraints, and licensing model — strictly from evidence in the documents.\n\n" +
+            "INPUTS:\n" +
+            "  • The documents uploaded on the Spec step (vendor spec sheets, pricing sheets, proposals),\n" +
+            "    in addition to the original session documents.\n" +
+            "  • The SCOPE from the Scope tab, for context on what capability is being replaced.\n\n" +
+            "METHOD:\n" +
+            "  1. Identify the vendor/product name and a concise overview of what it does.\n" +
+            "  2. List its key capabilities relevant to the in-scope requirement.\n" +
+            "  3. List constraints (customisation limits, data residency, integration limits).\n" +
+            "  4. Identify the licensing model (per-seat, per-usage, tiered, flat subscription).\n\n" +
+            "OUTPUT CONTRACT (single JSON object):\n" +
+            "  { \"vendorName\", \"productOverview\", \"keyCapabilities\": string[], \"constraints\": string[],\n" +
+            "    \"licensingModel\" }\n\n" +
+            "QUALITY BAR:\n" +
+            "  • Every claim traces to the uploaded vendor documents — do not invent capabilities.\n" +
+            "  • If no vendor documents were uploaded yet, say so plainly rather than guessing.\n\n" +
+            "GROUNDING:\n" +
+            "  Ground strictly in the uploaded Buy documents plus the Scope summary.");
+
+    public static readonly StepInstruction Purchase = new(
+        Key: "purchase",
+        Title: "Purchase",
+        Agent: "Vendor Cost Analyst agent",
+        Goal: "Extract every one-time and recurring cost to purchase the off-the-shelf solution from the uploaded vendor documents.",
+        Instructions:
+            "ROLE:\n" +
+            "  You are the Vendor Cost Analyst. You extract ALL costs required to purchase and onboard the\n" +
+            "  off-the-shelf solution described in the Spec step.\n\n" +
+            "OBJECTIVE:\n" +
+            "  Produce every purchase cost line item (licensing, subscription, implementation, migration,\n" +
+            "  integration, training, accreditation), each expressed as quantity × unit price. You choose\n" +
+            "  the line items and sizing; the application multiplies quantity × unit price.\n\n" +
+            "INPUTS:\n" +
+            "  • The Buy documents (vendor pricing sheets, quotes, proposals) and the SPEC summary.\n" +
+            "  • The SCOPE, for expected scale (seats, usage volume).\n\n" +
+            "METHOD:\n" +
+            "  1. Extract every one-time cost: onboarding, implementation, data migration, integration,\n" +
+            "     accreditation, training.\n" +
+            "  2. Extract every recurring cost: licensing / subscription fees (monthly or annual cadence).\n" +
+            "  3. For each line, set a defensible quantity (e.g. seats) and unit price; do not compute totals.\n" +
+            "  4. Set a contingency buffer appropriate to pricing uncertainty.\n\n" +
+            "OUTPUT CONTRACT (single JSON object):\n" +
+            "  { \"items\": [ { item, description, category, cadence, quantity, unitPrice, unit } ],\n" +
+            "    \"contingencyPercent\": number }\n" +
+            "    category — License | Subscription | Implementation | Migration | Integration | Training | Accreditation\n" +
+            "    cadence  — One-time | Monthly | Annual\n\n" +
+            "QUALITY BAR:\n" +
+            "  • Every dollar figure in the vendor documents is captured as a line item — nothing left out.\n" +
+            "  • One-time and recurring costs are clearly separated via the cadence field.\n\n" +
+            "GROUNDING:\n" +
+            "  Ground strictly in the uploaded Buy documents; if a figure is not stated, use the Spec\n" +
+            "  summary and Scope to set a defensible reference estimate and say so in a note.");
+
+    public static readonly StepInstruction BuyOperations = new(
+        Key: "buyoperations",
+        Title: "Operation Cost",
+        Agent: "Vendor Run & Support agent",
+        Goal: "Estimate the ongoing monthly cost to run the purchased (Buy) solution, using the vendor documents plus the Scope step.",
+        Instructions:
+            "ROLE:\n" +
+            "  You are the Vendor Run & Support lead. You size the ONGOING cost to run, support, and\n" +
+            "  administer the BOUGHT solution after go-live — separate from the one-time Purchase cost.\n\n" +
+            "OBJECTIVE:\n" +
+            "  Produce the MONTHLY operating cost of the Buy option as line items, each expressed as a\n" +
+            "  quantity and a unit price. You choose the activities and sizing; the application multiplies\n" +
+            "  quantity × unit price.\n\n" +
+            "INPUTS:\n" +
+            "  • The Buy documents (vendor support/SLA terms, hosting fees) and the SPEC summary.\n" +
+            "  • The SCOPE from the Scope tab, for expected scale and data sensitivity.\n\n" +
+            "METHOD:\n" +
+            "  1. Extract vendor support/maintenance fees not already captured as a recurring Purchase cost.\n" +
+            "  2. Add internal administration effort: vendor management, user administration, reporting.\n" +
+            "  3. Add security & compliance review effort when the data is PII / regulated.\n" +
+            "  4. Set a contingency buffer appropriate to operating-model uncertainty.\n\n" +
+            "OUTPUT CONTRACT (single JSON object):\n" +
+            "  { \"items\": [ { item, description, category, cadence, quantity, unitPrice, unit } ],\n" +
+            "    \"contingencyPercent\": number }\n" +
+            "    category — Support | Maintenance | Operations | Licensing\n\n" +
+            "QUALITY BAR:\n" +
+            "  • 3-6 line items; each is a distinct ongoing activity for running the vendor solution.\n" +
+            "  • Does not duplicate one-time costs already captured in the Purchase step.\n\n" +
+            "GROUNDING:\n" +
+            "  Ground strictly in the uploaded Buy documents plus the Scope summary; treat figures as\n" +
+            "  reference estimates to validate against an actual vendor support agreement.");
+
+    public static readonly IReadOnlyList<StepInstruction> All =
+        new[] { Scope, Requirements, Features, Cost, ProjectCost, Operations, Spec, Purchase, BuyOperations, Compare };
 }

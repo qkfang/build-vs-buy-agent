@@ -140,7 +140,11 @@ public class ApiEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         var body = await resp.Content.ReadAsStringAsync();
         Assert.Contains("scope", body);
         Assert.Contains("requirements", body);
+        Assert.Contains("features", body);
         Assert.Contains("cost", body);
+        Assert.Contains("spec", body);
+        Assert.Contains("purchase", body);
+        Assert.Contains("buyoperations", body);
         Assert.Contains("persona", body);
     }
 
@@ -148,8 +152,12 @@ public class ApiEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     [InlineData("/")]
     [InlineData("/platform/scope")]
     [InlineData("/platform/requirements")]
+    [InlineData("/platform/features")]
     [InlineData("/platform/cost")]
     [InlineData("/platform/steps")]
+    [InlineData("/platform/spec")]
+    [InlineData("/platform/purchase")]
+    [InlineData("/platform/buy-operations")]
     [InlineData("/estimations")]
     public async Task Physical_pages_render(string url)
     {

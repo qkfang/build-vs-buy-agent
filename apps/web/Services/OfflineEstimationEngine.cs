@@ -109,6 +109,159 @@ public sealed partial class OfflineEstimationEngine : IEstimationEngine
         return BuildOperations(signals);
     }
 
+    /// <summary>
+    /// Deterministically derives the prioritized feature list (Scope tab, Features step) from the scope
+    /// and requirements already produced by the earlier steps.
+    /// </summary>
+    public FeatureSet EstimateFeatures(ScopeSummary scope, IReadOnlyCollection<TechnicalRequirement> requirements)
+    {
+        var set = new FeatureSet
+        {
+            Notes = { $"Derived from scope \"{scope.ProjectName}\" and {requirements.Count} requirement(s)." }
+        };
+
+        void Feature(string name, string desc, string category, string priority) =>
+            set.Features.Add(new FeatureItem { Name = name, Description = desc, Category = category, Priority = priority });
+
+        Feature("Core workflow", scope.BusinessGoal is { Length: > 0 } goal ? goal : "Deliver the primary business outcome.", "Core", "Must");
+        foreach (var category in requirements.Select(r => r.Category).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct())
+        {
+            Feature($"{category} capability", $"Supports the {category} requirements derived for this solution.", "Core", "Should");
+        }
+        Feature("Administration & configuration", "Manage users, roles, and solution configuration.", "Admin", "Should");
+        Feature("Reporting & insights", "Operational reporting and dashboards over solution data.", "Enhancement", "Could");
+        Feature("Third-party integration", "Integrate with adjacent systems referenced in scope.", "Integration", "Could");
+
+        return set;
+    }
+
+    /// <summary>
+    /// Deterministically derives the Buy Spec summary (Buy tab, Spec step) from the uploaded Buy
+    /// documents only.
+    /// </summary>
+    public BuySpecSummary EstimateBuySpec(IReadOnlyCollection<IngestedDocument> buyDocuments)
+    {
+        var spec = new BuySpecSummary();
+        if (buyDocuments.Count == 0)
+        {
+            spec.VendorName = "Unidentified vendor";
+            spec.ProductOverview = "No Buy documents were uploaded yet. Upload a vendor spec / cost sheet on this step to populate the summary.";
+            spec.Notes.Add("No Buy documents uploaded.");
+            return spec;
+        }
+
+        var first = buyDocuments.First();
+        spec.VendorName = Path.GetFileNameWithoutExtension(first.FileName);
+        spec.ProductOverview = string.IsNullOrWhiteSpace(first.Excerpt) ? "No overview available." : first.Excerpt!;
+
+        var corpus = BuildCorpus(buyDocuments);
+        var signals = Analyze(corpus);
+        if (signals.HasAi) spec.KeyCapabilities.Add("AI/automation capability");
+        if (signals.HasApi) spec.KeyCapabilities.Add("API / integration surface");
+        if (signals.HasRelationalDb || signals.HasNoSql) spec.KeyCapabilities.Add("Data storage & reporting");
+        if (spec.KeyCapabilities.Count == 0) spec.KeyCapabilities.Add("General SaaS capability (see uploaded documents for detail).");
+
+        spec.Constraints.Add("Constraints not explicitly detected; review the vendor documents for customisation/data-residency limits.");
+        spec.LicensingModel = "Not explicitly stated; see Purchase step for extracted cost detail.";
+        spec.Notes.Add($"Derived from {buyDocuments.Count} uploaded Buy document(s).");
+        return spec;
+    }
+
+    /// <summary>
+    /// Deterministically derives the purchase cost (Buy tab, Purchase step) from the uploaded Buy
+    /// documents' cost tables.
+    /// </summary>
+    public PurchaseCost EstimatePurchaseCost(IReadOnlyCollection<IngestedDocument> buyDocuments)
+    {
+        var estimate = new PurchaseCost { Currency = AzurePricingCatalog.Currency, ContingencyPercent = 10m };
+        var text = string.Join("\n\n", buyDocuments.Select(d => string.IsNullOrWhiteSpace(d.ExtractedText) ? (d.Excerpt ?? "") : d.ExtractedText));
+
+        foreach (Match row in BuyCostTableRowRegex().Matches(text))
+        {
+            var category = CleanCostCell(row.Groups["cat"].Value);
+            var type = CleanCostCell(row.Groups["type"].Value);
+            var costCell = row.Groups["cost"].Value;
+            if (category.Length == 0 || category.StartsWith("cost category", StringComparison.OrdinalIgnoreCase) || category.Contains("total", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var amount = ParseMoneyCell(costCell);
+            if (amount <= 0) continue;
+
+            var isRecurring = type.Contains("recurring", StringComparison.OrdinalIgnoreCase) || type.Contains("annual", StringComparison.OrdinalIgnoreCase);
+            var isMonthly = type.Contains("month", StringComparison.OrdinalIgnoreCase) || costCell.Contains("/mo", StringComparison.OrdinalIgnoreCase);
+            estimate.Items.Add(new PurchaseCostLineItem
+            {
+                Item = category,
+                Description = type,
+                Category = category.Contains("licen", StringComparison.OrdinalIgnoreCase) || category.Contains("subscription", StringComparison.OrdinalIgnoreCase) ? "Subscription" : "Implementation",
+                Cadence = isRecurring ? (isMonthly ? "Monthly" : "Annual") : "One-time",
+                Quantity = 1m,
+                UnitPrice = amount,
+                Unit = "per item"
+            });
+        }
+
+        if (estimate.Items.Count == 0)
+        {
+            estimate.Notes.Add(buyDocuments.Count == 0
+                ? "No Buy documents were uploaded yet; upload vendor pricing on the Spec step to populate the Purchase cost."
+                : "No cost table was detected in the uploaded Buy documents; upload a vendor pricing sheet with a cost table to populate this step.");
+        }
+        else
+        {
+            estimate.Notes.Add($"Extracted {estimate.Items.Count} purchase line item(s) from {buyDocuments.Count} uploaded Buy document(s).");
+        }
+
+        return estimate;
+    }
+
+    /// <summary>
+    /// Deterministically derives the ongoing Buy-option run cost (Buy tab, Operation Cost step) from the
+    /// uploaded Buy documents plus the scope.
+    /// </summary>
+    public OperationCost EstimateBuyOperations(IReadOnlyCollection<IngestedDocument> buyDocuments, ScopeSummary scope)
+    {
+        var corpus = BuildCorpus(buyDocuments);
+        var signals = Analyze(corpus.Length > 0 ? corpus : BuildCorpus(new[] { new IngestedDocument { ExtractedText = scope.Overview } }));
+
+        var est = new OperationCost
+        {
+            Currency = AzurePricingCatalog.Currency,
+            ContingencyPercent = 15m,
+            Notes =
+            {
+                "Ongoing monthly cost to run, support, and administer the purchased (Buy) solution.",
+                "Derived from the uploaded Buy documents plus the Scope summary; edit quantities/rates to adjust."
+            }
+        };
+
+        void Op(string item, string desc, string cat, decimal hours, decimal rate) =>
+            est.Items.Add(new OperationCostLineItem { Item = item, Description = desc, Category = cat, Cadence = "Monthly", Quantity = hours, UnitPrice = rate, Unit = "per hour" });
+
+        Op("Vendor support & SLA management", "Vendor liaison, ticket triage, and SLA tracking.", "Support", 8m, 120m);
+        Op("User & access administration", "Seat/licence provisioning and access reviews.", "Operations", 6m, 110m);
+        if (signals.MentionsPii || signals.MentionsRegulated)
+            Op("Security & compliance reviews", "Access reviews, audit evidence, and compliance checks for the vendor solution.", "Operations", 4m, 150m);
+
+        return est;
+    }
+
+    [GeneratedRegex(@"^\|\s*(?<cat>[^|]*?)\s*\|\s*(?<type>[^|]*?)\s*\|\s*(?<cost>[^|]*?)\s*\|", RegexOptions.Multiline)]
+    private static partial Regex BuyCostTableRowRegex();
+
+    [GeneratedRegex(@"\$?\s*([\d][\d,]*(?:\.\d+)?)")]
+    private static partial Regex BuyMoneyRegex();
+
+    private static string CleanCostCell(string s) => s.Replace("*", "").Replace("≈", "").Trim();
+
+    private static decimal ParseMoneyCell(string cell)
+    {
+        var m = BuyMoneyRegex().Match(cell);
+        if (!m.Success) return 0m;
+        var digits = m.Groups[1].Value.Replace(",", "");
+        return decimal.TryParse(digits, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0m;
+    }
+
     // ---------------------------------------------------------------- Scope
 
     private static ScopeSummary BuildScope(EstimationResult job, WorkloadSignals s, string corpus)

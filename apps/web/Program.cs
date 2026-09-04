@@ -29,9 +29,13 @@ builder.Services.AddSingleton<OfflineEstimationEngine>();
 builder.Services.AddSingleton<SampleRequirementsService>();
 builder.Services.AddSingleton<ScopeAgent>();
 builder.Services.AddSingleton<RequirementsAgent>();
+builder.Services.AddSingleton<FeaturesAgent>();
 builder.Services.AddSingleton<CostModelAgent>();
 builder.Services.AddSingleton<ProjectCostAgent>();
 builder.Services.AddSingleton<OperationCostAgent>();
+builder.Services.AddSingleton<SpecAgent>();
+builder.Services.AddSingleton<PurchaseAgent>();
+builder.Services.AddSingleton<BuyOperationCostAgent>();
 builder.Services.AddSingleton<CompareAgent>();
 builder.Services.AddSingleton<FoundryEstimationEngine>();
 builder.Services.AddSingleton<CostComparisonService>();
@@ -280,6 +284,30 @@ api.MapPost("/sessions", async (HttpRequest request, SessionService svc, Cancell
 })
 .WithName("CreateSession")
 .WithDescription("Uploads technical documents, ingests them into a persisted session, and leaves all agent steps pending for later execution.")
+.DisableAntiforgery();
+
+api.MapPost("/sessions/{sessionId}/buy-documents", async (string sessionId, HttpRequest request, SessionService svc, CancellationToken ct) =>
+{
+    var uploadsResult = await ReadUploadsAsync(request, ct);
+    if (uploadsResult.Error is not null)
+        return Results.BadRequest(new { error = uploadsResult.Error });
+
+    try
+    {
+        var session = await svc.AddBuyDocumentsAsync(sessionId, uploadsResult.Uploads!, ct);
+        return Results.Ok(session);
+    }
+    catch (FileNotFoundException)
+    {
+        return Results.NotFound(new { error = "Session not found." });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+})
+.WithName("AddBuyDocuments")
+.WithDescription("Uploads vendor spec / cost documents for the Buy tab's Spec step, ingesting them separately from the Build tab's session documents.")
 .DisableAntiforgery();
 
 // Convenience: run an estimation against a bundled sample document (no upload needed; great for demos/CI).

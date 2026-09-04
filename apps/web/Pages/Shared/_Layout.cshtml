@@ -1,7 +1,9 @@
 @{
     var page = (ViewData["ActivePage"] as string) ?? "";
     string Active(string key) => page == key ? "active" : "";
-    bool platformActive = page is "scope" or "requirements" or "cost" or "project" or "operations" or "steps";
+    bool scopeActive = page is "scope" or "requirements" or "features";
+    bool buildActive = page is "cost" or "project" or "operations" or "steps";
+    bool buyActive = page is "spec" or "purchase" or "buyoperations";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -24,24 +26,49 @@
             </a>
             <nav class="mainnav" aria-label="Primary">
                 <a class="navlink @Active("upload")" href="/"><span class="nav-icon">📤</span> Upload</a>
-                <a class="navlink @(platformActive ? "active" : "")" href="/platform/scope"><span class="nav-icon">🤖</span> Build</a>
+                <a class="navlink @(scopeActive ? "active" : "")" href="/platform/scope"><span class="nav-icon">🔎</span> Scope</a>
+                <a class="navlink @(buildActive ? "active" : "")" href="/platform/cost"><span class="nav-icon">🤖</span> Build</a>
+                <a class="navlink @(buyActive ? "active" : "")" href="/platform/spec"><span class="nav-icon">🛒</span> Buy</a>
                 <a class="navlink @Active("compare")" href="/compare"><span class="nav-icon">⚖️</span> Compare</a>
                 <a class="navlink @Active("estimations")" href="/estimations"><span class="nav-icon">📊</span> Histories</a>
             </nav>
         </div>
     </header>
 
-    <nav class="subnav" aria-label="Workflow">
-        <div class="subnav-inner">
-            <span class="subnav-label">Workflow</span>
-            <a class="sublink @Active("scope")" href="/platform/scope"><em>1</em> Scope</a>
-            <a class="sublink @Active("requirements")" href="/platform/requirements"><em>2</em> Requirements</a>
-            <a class="sublink @Active("cost")" href="/platform/cost"><em>3</em> Cost Model</a>
-            <a class="sublink @Active("project")" href="/platform/project"><em>4</em> Project Cost</a>
-            <a class="sublink @Active("operations")" href="/platform/operations"><em>5</em> Operation Cost</a>
-            <a class="sublink sublink-aux @Active("steps")" href="/platform/steps">Prompts</a>
-        </div>
-    </nav>
+    @if (scopeActive)
+    {
+        <nav class="subnav" aria-label="Workflow">
+            <div class="subnav-inner">
+                <span class="subnav-label">Scope</span>
+                <a class="sublink @Active("scope")" href="/platform/scope"><em>1</em> Background</a>
+                <a class="sublink @Active("requirements")" href="/platform/requirements"><em>2</em> Requirements</a>
+                <a class="sublink @Active("features")" href="/platform/features"><em>3</em> Features</a>
+            </div>
+        </nav>
+    }
+    else if (buyActive)
+    {
+        <nav class="subnav" aria-label="Workflow">
+            <div class="subnav-inner">
+                <span class="subnav-label">Buy</span>
+                <a class="sublink @Active("spec")" href="/platform/spec"><em>1</em> Spec</a>
+                <a class="sublink @Active("purchase")" href="/platform/purchase"><em>2</em> Purchase</a>
+                <a class="sublink @Active("buyoperations")" href="/platform/buy-operations"><em>3</em> Operation Cost</a>
+            </div>
+        </nav>
+    }
+    else if (buildActive)
+    {
+        <nav class="subnav" aria-label="Workflow">
+            <div class="subnav-inner">
+                <span class="subnav-label">Build</span>
+                <a class="sublink @Active("cost")" href="/platform/cost"><em>1</em> Cost Model</a>
+                <a class="sublink @Active("project")" href="/platform/project"><em>2</em> Project Cost</a>
+                <a class="sublink @Active("operations")" href="/platform/operations"><em>3</em> Operation Cost</a>
+                <a class="sublink sublink-aux @Active("steps")" href="/platform/steps">Prompts</a>
+            </div>
+        </nav>
+    }
 </div>
 
 <main>
